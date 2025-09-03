@@ -1,6 +1,6 @@
 streamlit
 pandas
-matplotlib
 plotly
 pyarrow
-requests
+fastparquet
+glob2
