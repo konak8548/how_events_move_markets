@@ -82,7 +82,7 @@ def main():
 
     # Save to Excel
     os.makedirs(os.path.dirname(EXCEL_PATH), exist_ok=True)
-    combined.to_excel(EXCEL_PATH, index=True)
+    combined.to_excel(EXCEL_PATH, index=True, float_format="%.3f")
     print(f"✅ Excel updated: {EXCEL_PATH}. Rows: {len(combined)}")
 
 if __name__ == "__main__":
