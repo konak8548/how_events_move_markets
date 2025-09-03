@@ -1,7 +1,7 @@
 # update_historical_currencies.py
 import yfinance as yf
 import pandas as pd
-from datetime import date, datetime
+from datetime import date
 import os
 
 # ----------------------------
@@ -27,6 +27,8 @@ def fetch_currency_data(start_date, end_date):
     for cur in CURRENCIES:
         ticker = f"{BASE_CURRENCY}{cur}=X"
         df = yf.download(ticker, start=start_date, end=end_date, interval="1d", progress=False)
+        if df.empty:
+            continue
         df = df[["Close"]].rename(columns={"Close": cur})
         df.index = pd.to_datetime(df.index.date)
         if all_data.empty:
@@ -41,7 +43,8 @@ def add_pct_change(df):
     Add % change columns for all currencies.
     """
     for cur in CURRENCIES:
-        df[f"{cur}_%Chg"] = df[cur].pct_change().round(3) * 100
+        if cur in df.columns:
+            df[f"{cur}_%Chg"] = df[cur].pct_change().round(3) * 100
     return df
 
 # ----------------------------
@@ -51,8 +54,7 @@ def main():
     # Determine the last date in existing Excel
     if os.path.exists(EXCEL_PATH):
         try:
-            # Skip first two rows (Price, Tickers) to get actual headers
-            existing_df = pd.read_excel(EXCEL_PATH, header=2, index_col=0, parse_dates=True)
+            existing_df = pd.read_excel(EXCEL_PATH, index_col=0, parse_dates=True)
             last_date = existing_df.index.max()
             start_date = (last_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
             print(f"📈 Last date in Excel: {last_date}. Fetching from {start_date} to today.")
@@ -79,16 +81,9 @@ def main():
     else:
         combined = new_data
 
-    # Save to Excel with two metadata rows (Price, Tickers) + Date as index
+    # Save cleanly (no extra rows)
     os.makedirs(os.path.dirname(EXCEL_PATH), exist_ok=True)
-    with pd.ExcelWriter(EXCEL_PATH, engine="openpyxl") as writer:
-        # Row 1: "Price" label
-        combined.to_excel(writer, index_label="Date", startrow=2)
-        # Row 0: Price
-        writer.sheets["Sheet1"].cell(row=1, column=1, value="Price")
-        # Row 2: Tickers
-        for idx, cur in enumerate(CURRENCIES, start=2):
-            writer.sheets["Sheet1"].cell(row=2, column=idx, value=f"{BASE_CURRENCY}{cur}=X")
+    combined.to_excel(EXCEL_PATH, index_label="Date")
 
     print(f"✅ Excel updated: {EXCEL_PATH}. Rows: {len(combined)}")
 
