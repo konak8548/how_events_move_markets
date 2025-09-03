@@ -1,21 +1,20 @@
-# historical_events.py
 import os
 import requests
 import zipfile
 import io
 import pandas as pd
-from bs4 import BeautifulSoup
 from datetime import datetime
 
-# GitHub repo local path (make sure you cloned the repo locally!)
+# Local storage directory for parquet files
 DATA_DIR = "data/events"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 INDEX_URL = "http://data.gdeltproject.org/gdeltv2/masterfilelist.txt"
 
+
 def fetch_gdelt_index():
     """
-    Fetch GDELT master index file which lists all available event CSVs
+    Fetch GDELT master index file and return list of all event file URLs
     """
     print("📥 Fetching GDELT master index...")
     res = requests.get(INDEX_URL, timeout=120)
@@ -24,6 +23,7 @@ def fetch_gdelt_index():
     files = [line.split(" ")[-1] for line in lines if line.endswith(".export.CSV.zip")]
     print(f"✅ Found {len(files)} event files in index")
     return files
+
 
 def download_and_extract(url):
     """
@@ -37,11 +37,12 @@ def download_and_extract(url):
             z.open(fname),
             sep="\t",
             header=None,
-            usecols=[0, 1, 26, 51, 52],  # limit size: GlobalEventID, Date, Actor1CountryCode, ActionGeo_CountryCode, EventRootCode
+            usecols=[0, 1, 26, 51, 52],  # Selected columns
             names=["GlobalEventID", "Date", "Actor1Country", "ActionGeo_Country", "EventCode"],
             dtype=str
         )
     return df
+
 
 def save_monthly(df: pd.DataFrame, year: int, month: int):
     """
@@ -60,27 +61,44 @@ def save_monthly(df: pd.DataFrame, year: int, month: int):
     combined.to_parquet(path, index=False)
     print(f"💾 Saved {len(combined)} rows -> {path}")
 
-def process_all(start_date="2013-04-01"):
+
+def process_latest_month():
+    """
+    Process only the latest month’s events.
+    """
     files = fetch_gdelt_index()
-    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
 
-    for url in files:
-        # GDELT filename contains date, e.g. 20130401230000.export.CSV.zip
-        fname = url.split("/")[-1]
-        file_date = datetime.strptime(fname[:12], "%Y%m%d%H%M%S")
+    # Get the latest file date available
+    latest_file = files[-1]
+    fname = latest_file.split("/")[-1]
+    latest_dt = datetime.strptime(fname[:12], "%Y%m%d%H%M%S")
 
-        if file_date < start_dt:
-            continue
+    year, month = latest_dt.year, latest_dt.month
+    print(f"🗓 Processing latest available month: {year}-{month:02d}")
 
+    # Filter only files from this year and month
+    month_files = [
+        url for url in files
+        if datetime.strptime(url.split("/")[-1][:12], "%Y%m%d%H%M%S").year == year
+        and datetime.strptime(url.split("/")[-1][:12], "%Y%m%d%H%M%S").month == month
+    ]
+
+    all_dfs = []
+    for url in month_files:
         try:
             df = download_and_extract(url)
             df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
             df = df.dropna(subset=["Date"])
-
-            year, month = file_date.year, file_date.month
-            save_monthly(df, year, month)
+            all_dfs.append(df)
         except Exception as e:
             print(f"❌ Failed {url}: {e}")
 
+    if all_dfs:
+        final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=["GlobalEventID"])
+        save_monthly(final_df, year, month)
+    else:
+        print("⚠️ No data processed for this month.")
+
+
 if __name__ == "__main__":
-    process_all("2013-04-01")
+    process_latest_month()
