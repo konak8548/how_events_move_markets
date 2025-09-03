@@ -22,12 +22,12 @@ jobs:
       run: pip install pandas requests beautifulsoup4 pyarrow fastparquet
 
     - name: Run script
-      run: python scripts/historical_events.py
+      run: python scripts/update_historical_events.py
 
     - name: Commit and push changes
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add data/events/*.parquet
-        git commit -m "Update GDELT events $(date -u)"
+        git add data/events/**/*.parquet
+        git commit -m "Update GDELT events $(date -u)" || echo "No changes to commit"
         git push
