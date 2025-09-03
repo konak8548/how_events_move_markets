@@ -19,18 +19,15 @@ EXCEL_PATH = "data/currencies/USD_Exchange_Rates.xlsx"
 # Helper Functions
 # ----------------------------
 def fetch_currency_data(start_date, end_date):
-    """
-    Fetch currency closing rates from Yahoo Finance for all currencies.
-    Returns a DataFrame with date index and columns = CURRENCY.
-    """
+    """Fetch currency closing rates from Yahoo Finance for all currencies."""
     all_data = pd.DataFrame()
     for cur in CURRENCIES:
         ticker = f"{BASE_CURRENCY}{cur}=X"
         df = yf.download(ticker, start=start_date, end=end_date, interval="1d", progress=False)
-        if df.empty:
-            continue
-        df = df[["Close"]].rename(columns={"Close": cur})
-        df.index = pd.to_datetime(df.index.date)
+        df = df[["Close"]].copy()
+        df.columns = [cur]  # rename column to currency code
+        df.index = df.index.date  # keep only date (no datetime)
+        df.index = pd.to_datetime(df.index).date  # ensure index is datetime.date type
         if all_data.empty:
             all_data = df
         else:
@@ -39,24 +36,22 @@ def fetch_currency_data(start_date, end_date):
     return all_data
 
 def add_pct_change(df):
-    """
-    Add % change columns for all currencies.
-    """
+    """Add % change columns for all currencies."""
     for cur in CURRENCIES:
         if cur in df.columns:
-            df[f"{cur}_%Chg"] = df[cur].pct_change().round(3) * 100
+            df[f"{cur}_pctchg"] = df[cur].pct_change().round(3) * 100
     return df
 
 # ----------------------------
 # Main Incremental Update
 # ----------------------------
 def main():
-    # Determine the last date in existing Excel
+    # Determine last date in existing Excel
     if os.path.exists(EXCEL_PATH):
         try:
-            existing_df = pd.read_excel(EXCEL_PATH, index_col=0, parse_dates=True)
-            last_date = existing_df.index.max()
-            start_date = (last_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+            existing_df = pd.read_excel(EXCEL_PATH, index_col=0)
+            last_date = pd.to_datetime(existing_df.index).max().date()
+            start_date = (last_date).strftime("%Y-%m-%d")
             print(f"📈 Last date in Excel: {last_date}. Fetching from {start_date} to today.")
         except Exception as e:
             print(f"⚠️ Failed to read existing Excel: {e}")
@@ -67,7 +62,7 @@ def main():
         start_date = "2013-04-01"
 
     end_date = date.today().isoformat()
-    if pd.to_datetime(start_date) > pd.to_datetime(end_date):
+    if pd.to_datetime(start_date) >= pd.to_datetime(end_date):
         print("✅ Excel is already up-to-date. Nothing to fetch.")
         return
 
@@ -77,14 +72,17 @@ def main():
 
     # Combine with existing data
     if not existing_df.empty:
-        combined = pd.concat([existing_df, new_data]).drop_duplicates()
+        combined = pd.concat([existing_df, new_data])
+        combined = combined[~combined.index.duplicated(keep='last')]
     else:
         combined = new_data
 
-    # Save cleanly (no extra rows)
-    os.makedirs(os.path.dirname(EXCEL_PATH), exist_ok=True)
-    combined.to_excel(EXCEL_PATH, index_label="Date")
+    # Convert index to string YYYY-MM-DD for clean Excel
+    combined.index = pd.to_datetime(combined.index).strftime("%Y-%m-%d")
 
+    # Save to Excel
+    os.makedirs(os.path.dirname(EXCEL_PATH), exist_ok=True)
+    combined.to_excel(EXCEL_PATH, index=True)
     print(f"✅ Excel updated: {EXCEL_PATH}. Rows: {len(combined)}")
 
 if __name__ == "__main__":
