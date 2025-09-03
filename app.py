@@ -25,7 +25,7 @@ def load_all_currency_data():
         return pd.DataFrame()
     dfs = [pd.read_parquet(f) for f in files]
     df = pd.concat(dfs, ignore_index=True).sort_values("Date")
-    df["Date"] = pd.to_datetime(df["Date"])
+    df["Date"] = pd.to_datetime(df["Date"])  # ensure datetime for plotting
     return df
 
 # --------------------------
@@ -43,6 +43,7 @@ currencies_df = load_all_currency_data()
 # --------------------------
 st.sidebar.header("Filters")
 
+# Events filters
 if not events_df.empty:
     years = sorted(events_df["Date"].dt.year.unique())
     selected_year = st.sidebar.selectbox("Select Year", years, index=len(years)-1)
@@ -54,6 +55,7 @@ else:
     selected_country = ""
     selected_keyword = ""
 
+# Currency filters
 if not currencies_df.empty:
     currency_cols = [c for c in currencies_df.columns if c in [
         "EUR","GBP","JPY","CAD","AUD","CHF","CNY","INR","NZD","SEK",
@@ -98,6 +100,7 @@ st.subheader("💱 Currency Trends")
 if not currencies_df.empty and selected_currency:
     fig = go.Figure()
 
+    # Price line
     fig.add_trace(go.Scatter(
         x=currencies_df["Date"],
         y=currencies_df[selected_currency],
@@ -105,10 +108,12 @@ if not currencies_df.empty and selected_currency:
         name=selected_currency
     ))
 
-    if f"{selected_currency}_%Chg" in currencies_df.columns:
+    # % Change bar
+    pct_col = f"{selected_currency}_pctchg"
+    if pct_col in currencies_df.columns:
         fig.add_trace(go.Bar(
             x=currencies_df["Date"],
-            y=currencies_df[f"{selected_currency}_%Chg"],
+            y=currencies_df[pct_col],
             name=f"{selected_currency} % Change",
             yaxis="y2",
             opacity=0.5
