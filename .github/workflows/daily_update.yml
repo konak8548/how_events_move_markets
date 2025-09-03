@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # ensures full history for push
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -24,8 +22,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install dependencies
-        run: |
-          pip install pandas requests beautifulsoup4 pyarrow fastparquet yfinance openpyxl
+        run: pip install pandas requests beautifulsoup4 pyarrow fastparquet yfinance openpyxl
 
       - name: Run update scripts
         run: |
@@ -36,9 +33,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Reset local main to remote to avoid push conflicts
+          git fetch origin main
+          git reset --hard origin/main
+
           git add data/events/*.parquet data/currencies/*.xlsx
+
+          # Commit only if there are changes
           git diff --cached --quiet || git commit -m "Update data $(date -u)"
-          git pull --rebase origin main
+
           git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
