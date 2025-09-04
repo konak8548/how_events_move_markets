@@ -3,7 +3,7 @@
 This project demonstrates:
 - Automated **daily data updates** with GitHub Actions  
 - Incremental **event & currency parquet storage**  
-- Interactive **Streamlit portfolio app**  
+
 
 ## 🚀 Deployment
 1. Fork repo & deploy `app.py` to [Streamlit Cloud](https://streamlit.io/cloud).  
