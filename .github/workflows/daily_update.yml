@@ -6,7 +6,7 @@ on:
   workflow_dispatch:       # Manual trigger
 
 permissions:
-  contents: write
+  contents: write   # allow pushing changes
 
 jobs:
   update:
@@ -15,13 +15,6 @@ jobs:
     steps:
     - name: Checkout repo
       uses: actions/checkout@v3
-      with:
-        fetch-depth: 0   # fetch full history to allow pull/rebase
-
-    - name: Pull latest changes to avoid conflicts
-      run: |
-        git fetch origin main
-        git reset --hard origin/main
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -33,14 +26,27 @@ jobs:
 
     - name: Run update scripts
       run: |
-        # Skip update if data folders or Excel missing
-        if [ ! -d "data/events" ]; then mkdir -p data/events; fi
-        if [ ! -d "data/currencies" ]; then mkdir -p data/currencies; fi
         python scripts/update_historical_events.py
         python scripts/update_historical_currencies.py
+
+    - name: Debug files (see what was created)
+      run: |
+        echo "---- data/events ----"
+        ls -lh data/events || true
+        echo "---- data/currencies ----"
+        ls -lh data/currencies || true
 
     - name: Commit and push changes
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add data/events/*.parquet
+        # Add everything inside events & currencies dirs
+        git add data/events data/currencies
+        # Commit if there are changes
+        git commit -m "Update data $(date -u)" || echo "No changes to commit"
+        # Rebase to avoid push rejection
+        git pull --rebase origin main || true
+        # Push changes
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
