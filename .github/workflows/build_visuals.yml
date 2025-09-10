@@ -1,12 +1,12 @@
-name: Build Visuals for Portfolio
+name: Build Visuals
 
 on:
-  workflow_dispatch:       # manual run
+  workflow_dispatch:
   schedule:
-    - cron: "0 7 * * *"    # run daily at 07:00 UTC
+    - cron: "0 6 * * *" # runs daily at 6 AM UTC
 
 jobs:
-  build-visuals:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,20 +16,25 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: '3.10'
 
     - name: Install dependencies
-      run: pip install pandas plotly kaleido pyarrow openpyxl
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install plotly kaleido pandas openpyxl pyarrow
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt kaleido
+    - name: Ensure assets folder exists
+      run: mkdir -p assets
 
-    - name: Commit and push visuals
+    - name: Run visualization script
+      run: python scripts/make_visuals.py
+
+    - name: Commit and push changes
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add assets/*.png assets/*.html
-        git commit -m "Update visuals $(date -u)" || echo "No changes to commit"
+        git add assets || echo "No assets to add"
+        git commit -m "🔄 Update visuals $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+        git pull --rebase origin main
         git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
