@@ -9,23 +9,13 @@ This project explores the relationship between **world events** and **currency m
 
 ---
 
-## 🌍 Events by Country
+## 🌍 Events Impacting Currencies
 
 Static snapshot:  
-![Events by Country](assets/treemap_events.png)
+![Events Impact Treemap](assets/treemap_eur.png)
 
 Interactive version:  
-[👉 View Interactive Treemap](assets/treemap_events.html)
-
----
-
-## 💱 Currency Trends vs USD
-
-Static snapshot:  
-![Currency Trends](assets/currency_trends.png)
-
-Interactive version:  
-[👉 View Interactive Currency Trends](assets/currency_trends.html)
+[👉 View Interactive Treemap](assets/treemap_eur.html)
 
 ---
 
