@@ -1,35 +1,51 @@
 ---
+layout: default
 title: How Events Move Markets
 ---
 
-# 🌍 How Events Move Markets
+# 📊 How Events Move Markets
 
-This dashboard tells a story of how global events correlate with currency markets.
-
----
-
-## 📌 Events Treemap
-Visualizing the distribution of events by country.
-
-![Events Treemap](assets/treemap_events.png)  
-👉 [Interactive version](assets/treemap_events.html)
+This project explores the relationship between **world events** and **currency markets**, using data pipelines that update automatically.
 
 ---
 
-## 💱 Currency Trends
-Tracking daily exchange rates of major currencies vs USD.
+## 🌍 Events by Country
 
-![Currency Trends](assets/currency_trends.png)  
-👉 [Interactive version](assets/currency_trends.html)
+Static snapshot:  
+![Events by Country](assets/treemap_events.png)
 
----
-
-## 🔗 Correlation of Currency Movements
-Do currencies move together? Here’s a correlation heatmap of percentage changes.
-
-![Correlation Heatmap](assets/corr_heatmap.png)  
-👉 [Interactive version](assets/corr_heatmap.html)
+Interactive version:  
+[👉 View Interactive Treemap](assets/treemap_events.html)
 
 ---
 
-✍️ *Auto-generated daily using GitHub Actions.*
+## 💱 Currency Trends vs USD
+
+Static snapshot:  
+![Currency Trends](assets/currency_trends.png)
+
+Interactive version:  
+[👉 View Interactive Currency Trends](assets/currency_trends.html)
+
+---
+
+## 🔗 Correlation of Currency % Changes
+
+Static snapshot:  
+![Correlation Heatmap](assets/corr_heatmap.png)
+
+Interactive version:  
+[👉 View Interactive Heatmap](assets/corr_heatmap.html)
+
+---
+
+## ⚙️ How It Works
+
+- **Data** is pulled from [Yahoo Finance](https://finance.yahoo.com/) and [GDELT](https://www.gdeltproject.org/)  
+- **Pipelines** update automatically via GitHub Actions  
+- **Visuals** are regenerated and published here on every run  
+
+---
+
+✍️ Created by [Your Name](https://github.com/konak8548)  
+📂 Repo: [how_events_move_markets](https://github.com/konak8548/how_events_move_markets)
