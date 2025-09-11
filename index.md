@@ -9,11 +9,13 @@ This project explores the relationship between **world events** and **currency m
 
 ---
 
-## 🌍 Events Impacting Currencies
+## 🌍 Events Impacting Currencies (via OLS)
 
 Static snapshot:  
-![Events Impact Treemap](assets/treemap_eur.png)
+![Events Impact Treemap](assets/treemap_events.png)
 
+Interactive version:  
+[👉 View Interactive Treemap](assets/treemap_events.html)
 
 ---
 
@@ -22,13 +24,16 @@ Static snapshot:
 Static snapshot:  
 ![Correlation Heatmap](assets/corr_heatmap.png)
 
+Interactive version:  
+[👉 View Interactive Heatmap](assets/corr_heatmap.html)
+
 ---
 
 ## ⚙️ How It Works
 
-- **Data** is pulled from [Yahoo Finance](https://finance.yahoo.com/) and [GDELT](https://www.gdeltproject.org/)  
-- **Pipelines** update automatically via GitHub Actions  
-- **Visuals** are regenerated and published here on every run  
+- **Data** is pulled from [Yahoo Finance](https://finance.yahoo.com/) and your events parquet files (GDELT-derived counts).  
+- **Pipelines** update automatically via GitHub Actions — visuals regenerate on each run.  
+- **Analysis**: OLS regression of daily USD strength (derived from currency % changes) on daily event-type counts; treemap sizes events by coefficient magnitude and colors by sign (red = tends to strengthen USD → currencies weaken; green = tends to weaken USD → currencies strengthen).
 
 ---
 
