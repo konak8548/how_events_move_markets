@@ -29,13 +29,3 @@ Interactive version:
 
 ---
 
-## ⚙️ How It Works
-
-- **Data** is pulled from [Yahoo Finance](https://finance.yahoo.com/) and your events parquet files (GDELT-derived counts).  
-- **Pipelines** update automatically via GitHub Actions — visuals regenerate on each run.  
-- **Analysis**: OLS regression of daily USD strength (derived from currency % changes) on daily event-type counts; treemap sizes events by coefficient magnitude and colors by sign (red = tends to strengthen USD → currencies weaken; green = tends to weaken USD → currencies strengthen).
-
----
-
-✍️ Created by [Your Name](https://github.com/konak8548)  
-📂 Repo: [how_events_move_markets](https://github.com/konak8548/how_events_move_markets)
