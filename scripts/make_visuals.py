@@ -1,7 +1,9 @@
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import glob, os
+import statsmodels.api as sm
 
 # ====================================================
 # Setup
@@ -16,139 +18,219 @@ curr_df = pd.read_excel(curr_path, index_col=0)
 curr_df.index = pd.to_datetime(curr_df.index)
 
 # ====================================================
-# Function 1: Events vs Currency Impact Treemap
+# Helper: read/aggregate events (memory-friendly)
 # ====================================================
-def build_currency_event_treemap(events_path_pattern, currencies_df, currency="EUR"):
+def aggregate_event_counts(events_path_pattern):
+    """
+    Read parquet files incrementally (only needed columns), aggregate to daily
+    counts per COUNTTYPE, and return a pivoted DataFrame:
+      index -> DATE (datetime)
+      columns -> COUNTTYPE values (each column is daily counts)
+    """
     files = glob.glob(events_path_pattern)
     if not files:
         print("⚠️ No event files found")
-        return None
+        return pd.DataFrame()
 
+    # Use the exact columns present in your parquet files as shown:
     cols_needed = ["DATE", "COUNTTYPE", "NUMBER", "GEO_FULLNAME"]
-    dfs = []
+    daily = []  # store intermediate aggregated frames (one per file) to save memory
+
     for f in files:
         try:
             df = pd.read_parquet(f, columns=cols_needed)
-            dfs.append(df)
         except Exception as e:
             print(f"Skipping {f}: {e}")
+            continue
 
-    events_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-    if events_df.empty:
-        print("⚠️ No valid events data")
+        # Ensure the DATE column is parsed correctly (GDELT-like YYYYMMDD)
+        df = df.dropna(subset=["DATE"])
+        df["DATE"] = pd.to_datetime(df["DATE"], format="%Y%m%d", errors="coerce")
+        df = df.dropna(subset=["DATE"])
+        # aggregate counts per day per COUNTTYPE
+        # we use .size() to count records (robust); you can change to sum(NUMBER) if desired
+        agg = (
+            df.groupby([df["DATE"].dt.date, "COUNTTYPE"])
+            .size()
+            .reset_index(name="count")
+            .rename(columns={"DATE": "date"})  # won't exist but keep consistent
+        )
+        # convert back to datetime index
+        agg["date"] = pd.to_datetime(agg["DATE"].astype(str), format="%Y-%m-%d", errors="coerce") if "DATE" in agg.columns else pd.to_datetime(agg["date"])
+        # keep only what we need
+        agg = agg[["date", "COUNTTYPE", "count"]]
+        daily.append(agg)
+
+    if not daily:
+        return pd.DataFrame()
+
+    # concat incremental aggregates and pivot to get wide data: date x COUNTTYPE
+    all_agg = pd.concat(daily, ignore_index=True)
+    pivot = all_agg.pivot_table(index="date", columns="COUNTTYPE", values="count", aggfunc="sum", fill_value=0)
+    pivot.index = pd.to_datetime(pivot.index)
+    pivot = pivot.sort_index()
+    return pivot
+
+
+# ====================================================
+# Function: run OLS and produce treemap of event impacts
+# ====================================================
+def build_ols_event_treemap(events_path_pattern, currencies_df, asset_png="assets/treemap_events.png", asset_html="assets/treemap_events.html"):
+    """
+    Aggregates events by day & event type, computes a USD-strength target (negative mean of currency pct changes),
+    runs OLS (usd_strength ~ event_counts), extracts coefficients and builds a treemap of impacts:
+      - size = absolute coefficient (magnitude of effect)
+      - color = sign (positive => USD strengthens => currencies weaken => RED)
+    Saves HTML + PNG to assets.
+    """
+    # 1) Aggregate events to daily counts by COUNTTYPE
+    event_counts = aggregate_event_counts(events_path_pattern)
+    if event_counts.empty:
+        print("⚠️ No aggregated event counts available; treemap will not be built.")
         return None
 
-    events_df["DATE"] = pd.to_datetime(events_df["DATE"], format="%Y%m%d", errors="coerce")
-    events_df = events_df.dropna(subset=["DATE"])
-
-    pct_col = f"{currency}_pctchg"
-    if pct_col not in currencies_df.columns:
-        print(f"⚠️ {pct_col} not in currencies_df")
+    # 2) Prepare currency-based target: average pct change across currencies
+    pct_cols = [c for c in currencies_df.columns if c.endswith("_pctchg")]
+    if not pct_cols:
+        print("⚠️ No pct change columns found in currencies_df (expected columns like EUR_pctchg).")
         return None
 
-    cur = currencies_df[[pct_col]].copy()
-    cur.index = pd.to_datetime(cur.index)
+    # Align currencies to daily (date index)
+    cur_pct = currencies_df[pct_cols].copy()
+    cur_pct.index = pd.to_datetime(cur_pct.index)
+    cur_pct = cur_pct.sort_index()
 
-    merged = pd.merge(events_df, cur, left_on="DATE", right_index=True, how="inner")
-    if merged.empty:
-        print("⚠️ No overlap between events and currency data")
+    # Ensure overlapping index between event_counts and currency pct dataframe
+    common_idx = event_counts.index.intersection(cur_pct.index)
+    if len(common_idx) == 0:
+        # try aligning by date (sometimes event_counts use date only)
+        common_idx = event_counts.index.intersection(cur_pct.index)
+    if len(common_idx) == 0:
+        print("⚠️ No overlapping dates between events and currencies.")
         return None
 
-    merged["Impact"] = merged[pct_col].apply(lambda x: "Strengthen" if x > 0 else "Weaken")
+    event_counts = event_counts.reindex(common_idx).fillna(0)
+    cur_pct = cur_pct.reindex(common_idx).fillna(method="ffill").fillna(0)
 
-    agg = (
-        merged.groupby(["COUNTTYPE", "Impact"])
-        .size()
-        .reset_index(name="Count")
+    # 3) Target variable: average of currency percentage changes
+    # NOTE: sign convention: positive avg means currencies strengthened vs USD => USD weakened.
+    avg_currency_pctchg = cur_pct.mean(axis=1)
+
+    # Define usd_strength so positive => USD strengthened (i.e., currencies weakened)
+    usd_strength = - avg_currency_pctchg
+    usd_strength.name = "usd_strength"
+
+    # 4) Prepare regression dataframe (drop event columns that are all zeros)
+    X = event_counts.loc[usd_strength.index].copy()
+    # drop columns with zero variance (all zeros) to avoid singular matrix
+    X = X.loc[:, (X.sum(axis=0) > 0)]
+    if X.shape[1] == 0:
+        print("⚠️ No event types with non-zero counts after alignment.")
+        return None
+
+    y = usd_strength
+
+    # Add constant and run OLS (statsmodels)
+    X_const = sm.add_constant(X)
+    model = sm.OLS(y, X_const)
+    results = model.fit()
+    coeffs = results.params.drop("const", errors="ignore")  # event-type coefficients
+
+    # Build dataframe of coefficients
+    coeff_df = coeffs.reset_index()
+    coeff_df.columns = ["COUNTTYPE", "coef"]
+    coeff_df["abs_coef"] = coeff_df["coef"].abs()
+    # classify impact for currencies:
+    # coef > 0 => event increases usd_strength => currencies weaken => 'Weaken'
+    # coef < 0 => event decreases usd_strength => currencies strengthen => 'Strengthen'
+    coeff_df["Impact"] = coeff_df["coef"].apply(lambda x: "Weaken" if x > 0 else ("Strengthen" if x < 0 else "Neutral"))
+
+    # remove tiny coefficients near zero for plotting clarity (optional)
+    # coeff_df = coeff_df[coeff_df["abs_coef"] > 1e-6]
+
+    # Normalize sizes for treemap so very small coefficients are still visible
+    # Use abs_coef scaled to sum to a convenient value; but px.treemap will size by abs_coef directly.
+    # Prepare data for treemap: we want Impact -> COUNTTYPE
+    treedata = coeff_df.sort_values("abs_coef", ascending=False)
+
+    # if all coefficients are 0 (unlikely), fallback to counts-based treemap
+    if treedata["abs_coef"].sum() == 0:
+        print("⚠️ All coefficients are zero — falling back to event frequency treemap.")
+        freq = X.sum(axis=0).reset_index()
+        freq.columns = ["COUNTTYPE", "Count"]
+        fig = px.treemap(freq, path=["COUNTTYPE"], values="Count", title="Event frequency (fallback)")
+    else:
+        fig = px.treemap(
+            treedata,
+            path=["Impact", "COUNTTYPE"],
+            values="abs_coef",
+            color="Impact",
+            color_discrete_map={"Weaken": "red", "Strengthen": "green", "Neutral": "gray"},
+            title="Event types sized by OLS coefficient magnitude (impact on USD strength)"
+        )
+        # Add hover info with coefficient sign & value
+        fig.data[0].hovertemplate = '<b>%{label}</b><br>Impact: %{parent}<br>coef: %{value:.6f}<extra></extra>'
+
+    # Save visuals
+    fig.write_html(asset_html)
+    try:
+        fig.write_image(asset_png)
+    except Exception as e:
+        print(f"✅ HTML saved to {asset_html}. PNG save failed (often requires orca / kaleido). Error: {e}")
+
+    # Also return regression summary and coeff_df for downstream use
+    return {"fig": fig, "results": results, "coeff_df": coeff_df}
+
+
+# ====================================================
+# Improved correlation heatmap (legible ticks)
+# ====================================================
+def build_corr_heatmap(currencies_df, out_html="assets/corr_heatmap.html", out_png="assets/corr_heatmap.png"):
+    pct_cols = [c for c in currencies_df.columns if c.endswith("_pctchg")]
+    if not pct_cols:
+        print("⚠️ No pct change columns found for correlation heatmap.")
+        return None
+
+    corr = currencies_df[pct_cols].corr().round(3)
+
+    fig = px.imshow(
+        corr,
+        text_auto=True,
+        aspect="auto",
+        title="Correlation matrix: Currency % changes",
     )
+    # Make tick labels legible
+    fig.update_xaxes(tickangle=45, tickfont=dict(size=10))
+    fig.update_yaxes(tickfont=dict(size=10))
+    fig.update_layout(width=1000, height=900, margin=dict(l=120, r=40, t=80, b=160))
 
-    fig = px.treemap(
-        agg,
-        path=["Impact", "COUNTTYPE"],
-        values="Count",
-        color="Impact",
-        color_discrete_map={"Strengthen": "green", "Weaken": "red"},
-        title=f"Events Impacting {currency}"
-    )
+    fig.write_html(out_html)
+    try:
+        fig.write_image(out_png)
+    except Exception as e:
+        print(f"✅ HTML saved to {out_html}. PNG save failed (may require kaleido). Error: {e}")
+
     return fig
 
 
 # ====================================================
-# Function 2: USD Correlation / Covariance Analysis
-# ====================================================
-def analyze_usd_relationships(currencies_df, method="corr"):
-    pct_cols = [c for c in currencies_df.columns if c.endswith("_pctchg")]
-    df_pct = currencies_df[pct_cols].dropna()
-
-    if "USD_pctchg" not in df_pct.columns:
-        print("⚠️ USD_pctchg column not found")
-        return None
-
-    if method == "corr":
-        results = df_pct.corr()["USD_pctchg"].drop("USD_pctchg")
-    elif method == "cov":
-        results = df_pct.cov()["USD_pctchg"].drop("USD_pctchg")
-    else:
-        raise ValueError("method must be 'corr' or 'cov'")
-
-    return results.sort_values(ascending=False)
-
-
-# ====================================================
-# Visuals Execution
+# Main execution: create the two outputs required for portfolio
 # ====================================================
 if __name__ == "__main__":
+    # Run OLS treemap
+    ols_out = build_ols_event_treemap("data/events/*/*.parquet", curr_df,
+                                      asset_png="assets/treemap_events.png",
+                                      asset_html="assets/treemap_events.html")
+    if ols_out is not None:
+        print("✅ OLS treemap built and saved (assets/treemap_events.*)")
+        # print short top coefficients for quick log
+        top = ols_out["coeff_df"].sort_values("abs_coef", ascending=False).head(10)
+        print("Top event impacts (by abs coef):")
+        print(top.to_string(index=False))
 
-    # --------------------------
-    # Example 1: Treemap (EUR)
-    # --------------------------
-    fig1 = build_currency_event_treemap("data/events/*/*.parquet", curr_df, currency="EUR")
-    if fig1:
-        fig1.write_html("assets/treemap_eur.html")
-        fig1.write_image("assets/treemap_eur.png")
+    # Build correlation heatmap
+    heat = build_corr_heatmap(curr_df, out_html="assets/corr_heatmap.html", out_png="assets/corr_heatmap.png")
+    if heat is not None:
+        print("✅ Correlation heatmap saved to assets/corr_heatmap.*")
 
-    # --------------------------
-    # Example 2: Currency Trends
-    # --------------------------
-    fig2 = go.Figure()
-    for cur in ["EUR", "GBP", "JPY", "INR"]:
-        if cur in curr_df.columns:
-            fig2.add_trace(go.Scatter(x=curr_df.index, y=curr_df[cur], mode="lines", name=cur))
-    fig2.update_layout(title="Currency Trends vs USD (Sample)")
-    fig2.write_html("assets/currency_trends.html")
-    fig2.write_image("assets/currency_trends.png")
-
-    # --------------------------
-    # Example 3: Correlation Heatmap
-    # --------------------------
-    pct_cols = [c for c in curr_df.columns if "_pctchg" in c]
-    if pct_cols:
-        corr = curr_df[pct_cols].corr()
-        fig3 = px.imshow(corr, text_auto=True, title="Correlation of Currency % Changes")
-        fig3.write_html("assets/corr_heatmap.html")
-        fig3.write_image("assets/corr_heatmap.png")
-
-    # --------------------------
-    # Example 4: Correlation/Independence vs USD
-    # --------------------------
-    corr_results = analyze_usd_relationships(curr_df, method="corr")
-    if corr_results is not None:
-        fig4 = px.bar(
-            corr_results,
-            title="Currency Correlation with USD",
-            labels={"value": "Correlation", "index": "Currency"}
-        )
-        fig4.write_html("assets/usd_corr.html")
-        fig4.write_image("assets/usd_corr.png")
-
-    cov_results = analyze_usd_relationships(curr_df, method="cov")
-    if cov_results is not None:
-        fig5 = px.bar(
-            cov_results,
-            title="Currency Covariance with USD",
-            labels={"value": "Covariance", "index": "Currency"}
-        )
-        fig5.write_html("assets/usd_cov.html")
-        fig5.write_image("assets/usd_cov.png")
-
-    print("✅ All visuals saved to assets/")
+    print("✅ All done.")
