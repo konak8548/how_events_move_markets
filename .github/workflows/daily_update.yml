@@ -1,4 +1,4 @@
-name: Update Historical Events and Currencies
+name: Update Data and Run OLS Regression
 
 on:
   schedule:
@@ -22,31 +22,34 @@ jobs:
         python-version: "3.10"
 
     - name: Install dependencies
-      run: pip install pandas requests beautifulsoup4 pyarrow fastparquet yfinance openpyxl
+      run: pip install pandas requests beautifulsoup4 pyarrow fastparquet yfinance openpyxl statsmodels
 
     - name: Run update scripts
       run: |
         python scripts/update_historical_events.py
         python scripts/update_historical_currencies.py
 
-    - name: Debug files (see what was created)
+    - name: Run OLS Regression
+      run: |
+        python scripts/run_ols_regression.py
+
+    - name: Debug outputs
       run: |
         echo "---- data/events ----"
         ls -lh data/events || true
         echo "---- data/currencies ----"
         ls -lh data/currencies || true
+        echo "---- results ----"
+        ls -lh results || true
+        cat results/ols_summary.txt || true
 
     - name: Commit and push changes
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        # Add everything inside events & currencies dirs
-        git add data/events data/currencies
-        # Commit if there are changes
-        git commit -m "Update data $(date -u)" || echo "No changes to commit"
-        # Rebase to avoid push rejection
+        git add data/events data/currencies results
+        git commit -m "Daily update + OLS regression $(date -u)" || echo "No changes to commit"
         git pull --rebase origin main || true
-        # Push changes
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
