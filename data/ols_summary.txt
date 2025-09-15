@@ -1,0 +1,660 @@
+
+
+=== OLS Regression: EUR_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             EUR_pctchg   R-squared:                       0.029
+Model:                            OLS   Adj. R-squared:                  0.004
+Method:                 Least Squares   F-statistic:                     1.156
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.289
+Time:                        17:23:41   Log-Likelihood:                -25.387
+No. Observations:                  41   AIC:                             54.77
+Df Residuals:                      39   BIC:                             58.20
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.1219      0.077     -1.584      0.121      -0.277       0.034
+event_intensity  2.174e-06   2.02e-06      1.075      0.289   -1.91e-06    6.26e-06
+==============================================================================
+Omnibus:                        1.816   Durbin-Watson:                   2.115
+Prob(Omnibus):                  0.403   Jarque-Bera (JB):                0.917
+Skew:                          -0.293   Prob(JB):                        0.632
+Kurtosis:                       3.439   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: GBP_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             GBP_pctchg   R-squared:                       0.083
+Model:                            OLS   Adj. R-squared:                  0.060
+Method:                 Least Squares   F-statistic:                     3.553
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):             0.0669
+Time:                        17:23:41   Log-Likelihood:                -22.885
+No. Observations:                  41   AIC:                             49.77
+Df Residuals:                      39   BIC:                             53.20
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.1310      0.072     -1.811      0.078      -0.277       0.015
+event_intensity  3.584e-06    1.9e-06      1.885      0.067   -2.62e-07    7.43e-06
+==============================================================================
+Omnibus:                        1.620   Durbin-Watson:                   2.398
+Prob(Omnibus):                  0.445   Jarque-Bera (JB):                1.164
+Skew:                          -0.140   Prob(JB):                        0.559
+Kurtosis:                       2.223   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: JPY_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             JPY_pctchg   R-squared:                       0.060
+Model:                            OLS   Adj. R-squared:                  0.036
+Method:                 Least Squares   F-statistic:                     2.474
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.124
+Time:                        17:23:41   Log-Likelihood:                -36.730
+No. Observations:                  41   AIC:                             77.46
+Df Residuals:                      39   BIC:                             80.89
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.1660      0.101     -1.637      0.110      -0.371       0.039
+event_intensity  4.192e-06   2.67e-06      1.573      0.124    -1.2e-06    9.58e-06
+==============================================================================
+Omnibus:                       14.105   Durbin-Watson:                   1.872
+Prob(Omnibus):                  0.001   Jarque-Bera (JB):               17.757
+Skew:                          -1.056   Prob(JB):                     0.000139
+Kurtosis:                       5.435   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: CAD_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             CAD_pctchg   R-squared:                       0.017
+Model:                            OLS   Adj. R-squared:                 -0.009
+Method:                 Least Squares   F-statistic:                    0.6545
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.424
+Time:                        17:23:41   Log-Likelihood:                -10.562
+No. Observations:                  40   AIC:                             25.12
+Df Residuals:                      38   BIC:                             28.50
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0416      0.054     -0.771      0.446      -0.151       0.068
+event_intensity  1.199e-06   1.48e-06      0.809      0.424    -1.8e-06     4.2e-06
+==============================================================================
+Omnibus:                        0.243   Durbin-Watson:                   2.592
+Prob(Omnibus):                  0.885   Jarque-Bera (JB):                0.008
+Skew:                           0.035   Prob(JB):                        0.996
+Kurtosis:                       3.015   Cond. No.                     3.85e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.85e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: AUD_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             AUD_pctchg   R-squared:                       0.008
+Model:                            OLS   Adj. R-squared:                 -0.018
+Method:                 Least Squares   F-statistic:                    0.3255
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.572
+Time:                        17:23:41   Log-Likelihood:                -36.699
+No. Observations:                  40   AIC:                             77.40
+Df Residuals:                      38   BIC:                             80.78
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.1016      0.104     -0.979      0.334      -0.312       0.109
+event_intensity  1.625e-06   2.85e-06      0.571      0.572   -4.14e-06    7.39e-06
+==============================================================================
+Omnibus:                        0.471   Durbin-Watson:                   2.461
+Prob(Omnibus):                  0.790   Jarque-Bera (JB):                0.137
+Skew:                           0.140   Prob(JB):                        0.934
+Kurtosis:                       3.061   Cond. No.                     3.85e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.85e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: CHF_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             CHF_pctchg   R-squared:                       0.019
+Model:                            OLS   Adj. R-squared:                 -0.006
+Method:                 Least Squares   F-statistic:                    0.7433
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.394
+Time:                        17:23:41   Log-Likelihood:                -22.860
+No. Observations:                  41   AIC:                             49.72
+Df Residuals:                      39   BIC:                             53.15
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0659      0.072     -0.911      0.368      -0.212       0.080
+event_intensity  1.638e-06    1.9e-06      0.862      0.394   -2.21e-06    5.48e-06
+==============================================================================
+Omnibus:                        0.509   Durbin-Watson:                   2.480
+Prob(Omnibus):                  0.775   Jarque-Bera (JB):                0.317
+Skew:                          -0.212   Prob(JB):                        0.853
+Kurtosis:                       2.928   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: CNY_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             CNY_pctchg   R-squared:                       0.004
+Model:                            OLS   Adj. R-squared:                 -0.021
+Method:                 Least Squares   F-statistic:                    0.1760
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.677
+Time:                        17:23:41   Log-Likelihood:                 18.255
+No. Observations:                  41   AIC:                            -32.51
+Df Residuals:                      39   BIC:                            -29.08
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const               0.0015      0.027      0.056      0.956      -0.052       0.055
+event_intensity -2.925e-07   6.97e-07     -0.420      0.677    -1.7e-06    1.12e-06
+==============================================================================
+Omnibus:                        7.395   Durbin-Watson:                   2.103
+Prob(Omnibus):                  0.025   Jarque-Bera (JB):                8.707
+Skew:                          -0.482   Prob(JB):                       0.0129
+Kurtosis:                       5.042   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: INR_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             INR_pctchg   R-squared:                       0.008
+Model:                            OLS   Adj. R-squared:                 -0.017
+Method:                 Least Squares   F-statistic:                    0.3160
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.577
+Time:                        17:23:41   Log-Likelihood:                -5.3680
+No. Observations:                  41   AIC:                             14.74
+Df Residuals:                      39   BIC:                             18.16
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const               0.0102      0.047      0.215      0.831      -0.085       0.106
+event_intensity  6.972e-07   1.24e-06      0.562      0.577   -1.81e-06    3.21e-06
+==============================================================================
+Omnibus:                        7.682   Durbin-Watson:                   2.606
+Prob(Omnibus):                  0.021   Jarque-Bera (JB):                6.813
+Skew:                           0.736   Prob(JB):                       0.0332
+Kurtosis:                       4.350   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: NZD_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             NZD_pctchg   R-squared:                       0.006
+Model:                            OLS   Adj. R-squared:                 -0.020
+Method:                 Least Squares   F-statistic:                    0.2246
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.638
+Time:                        17:23:41   Log-Likelihood:                -38.171
+No. Observations:                  41   AIC:                             80.34
+Df Residuals:                      39   BIC:                             83.77
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0176      0.105     -0.167      0.868      -0.230       0.195
+event_intensity  1.308e-06   2.76e-06      0.474      0.638   -4.28e-06    6.89e-06
+==============================================================================
+Omnibus:                        6.718   Durbin-Watson:                   2.696
+Prob(Omnibus):                  0.035   Jarque-Bera (JB):                5.969
+Skew:                           0.616   Prob(JB):                       0.0506
+Kurtosis:                       4.406   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: SEK_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             SEK_pctchg   R-squared:                       0.008
+Model:                            OLS   Adj. R-squared:                 -0.018
+Method:                 Least Squares   F-statistic:                    0.3119
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.580
+Time:                        17:23:41   Log-Likelihood:                -38.952
+No. Observations:                  41   AIC:                             81.90
+Df Residuals:                      39   BIC:                             85.33
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.1625      0.107     -1.518      0.137      -0.379       0.054
+event_intensity  1.571e-06   2.81e-06      0.558      0.580   -4.12e-06    7.26e-06
+==============================================================================
+Omnibus:                        2.032   Durbin-Watson:                   2.336
+Prob(Omnibus):                  0.362   Jarque-Bera (JB):                1.678
+Skew:                          -0.346   Prob(JB):                        0.432
+Kurtosis:                       2.290   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: NOK_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             NOK_pctchg   R-squared:                       0.000
+Model:                            OLS   Adj. R-squared:                 -0.026
+Method:                 Least Squares   F-statistic:                  0.001252
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.972
+Time:                        17:23:41   Log-Likelihood:                -36.118
+No. Observations:                  41   AIC:                             76.24
+Df Residuals:                      39   BIC:                             79.66
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0598      0.100     -0.598      0.553      -0.262       0.142
+event_intensity  9.289e-08   2.63e-06      0.035      0.972   -5.22e-06     5.4e-06
+==============================================================================
+Omnibus:                        0.014   Durbin-Watson:                   2.191
+Prob(Omnibus):                  0.993   Jarque-Bera (JB):                0.152
+Skew:                          -0.038   Prob(JB):                        0.927
+Kurtosis:                       2.712   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: DKK_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             DKK_pctchg   R-squared:                       0.031
+Model:                            OLS   Adj. R-squared:                  0.006
+Method:                 Least Squares   F-statistic:                     1.241
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.272
+Time:                        17:23:41   Log-Likelihood:                -24.388
+No. Observations:                  41   AIC:                             52.78
+Df Residuals:                      39   BIC:                             56.20
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.1246      0.075     -1.660      0.105      -0.276       0.027
+event_intensity  2.197e-06   1.97e-06      1.114      0.272   -1.79e-06    6.19e-06
+==============================================================================
+Omnibus:                        1.935   Durbin-Watson:                   2.153
+Prob(Omnibus):                  0.380   Jarque-Bera (JB):                1.009
+Skew:                          -0.311   Prob(JB):                        0.604
+Kurtosis:                       3.452   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: ZAR_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             ZAR_pctchg   R-squared:                       0.006
+Model:                            OLS   Adj. R-squared:                 -0.021
+Method:                 Least Squares   F-statistic:                    0.2160
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.645
+Time:                        17:23:41   Log-Likelihood:                -50.611
+No. Observations:                  40   AIC:                             105.2
+Df Residuals:                      38   BIC:                             108.6
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.1346      0.147     -0.915      0.366      -0.432       0.163
+event_intensity  1.874e-06   4.03e-06      0.465      0.645   -6.29e-06       1e-05
+==============================================================================
+Omnibus:                        2.078   Durbin-Watson:                   2.123
+Prob(Omnibus):                  0.354   Jarque-Bera (JB):                1.075
+Skew:                           0.264   Prob(JB):                        0.584
+Kurtosis:                       3.604   Cond. No.                     3.85e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.85e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: BRL_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             BRL_pctchg   R-squared:                       0.003
+Model:                            OLS   Adj. R-squared:                 -0.022
+Method:                 Least Squares   F-statistic:                    0.1294
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.721
+Time:                        17:23:41   Log-Likelihood:                -52.194
+No. Observations:                  41   AIC:                             108.4
+Df Residuals:                      39   BIC:                             111.8
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0310      0.148     -0.209      0.835      -0.330       0.268
+event_intensity  1.398e-06   3.89e-06      0.360      0.721   -6.46e-06    9.26e-06
+==============================================================================
+Omnibus:                       11.556   Durbin-Watson:                   2.412
+Prob(Omnibus):                  0.003   Jarque-Bera (JB):               11.453
+Skew:                           1.062   Prob(JB):                      0.00326
+Kurtosis:                       4.481   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: MXN_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             MXN_pctchg   R-squared:                       0.007
+Model:                            OLS   Adj. R-squared:                 -0.019
+Method:                 Least Squares   F-statistic:                    0.2848
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.597
+Time:                        17:23:41   Log-Likelihood:                -37.786
+No. Observations:                  40   AIC:                             79.57
+Df Residuals:                      38   BIC:                             82.95
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0859      0.107     -0.805      0.426      -0.302       0.130
+event_intensity  1.562e-06   2.93e-06      0.534      0.597   -4.36e-06    7.49e-06
+==============================================================================
+Omnibus:                        0.846   Durbin-Watson:                   2.536
+Prob(Omnibus):                  0.655   Jarque-Bera (JB):                0.886
+Skew:                          -0.308   Prob(JB):                        0.642
+Kurtosis:                       2.610   Cond. No.                     3.85e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.85e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: SGD_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             SGD_pctchg   R-squared:                       0.054
+Model:                            OLS   Adj. R-squared:                  0.030
+Method:                 Least Squares   F-statistic:                     2.190
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.147
+Time:                        17:23:41   Log-Likelihood:                -6.4287
+No. Observations:                  40   AIC:                             16.86
+Df Residuals:                      38   BIC:                             20.24
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0833      0.049     -1.710      0.095      -0.182       0.015
+event_intensity  1.978e-06   1.34e-06      1.480      0.147   -7.28e-07    4.68e-06
+==============================================================================
+Omnibus:                        0.277   Durbin-Watson:                   2.247
+Prob(Omnibus):                  0.871   Jarque-Bera (JB):                0.429
+Skew:                          -0.163   Prob(JB):                        0.807
+Kurtosis:                       2.612   Cond. No.                     3.85e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.85e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: HKD_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             HKD_pctchg   R-squared:                       0.047
+Model:                            OLS   Adj. R-squared:                  0.022
+Method:                 Least Squares   F-statistic:                     1.867
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.180
+Time:                        17:23:41   Log-Likelihood:                 60.552
+No. Observations:                  40   AIC:                            -117.1
+Df Residuals:                      38   BIC:                            -113.7
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0090      0.009     -0.989      0.329      -0.028       0.009
+event_intensity  3.421e-07    2.5e-07      1.366      0.180   -1.65e-07    8.49e-07
+==============================================================================
+Omnibus:                       33.159   Durbin-Watson:                   1.971
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):               95.436
+Skew:                          -1.984   Prob(JB):                     1.89e-21
+Kurtosis:                       9.443   Cond. No.                     3.85e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.85e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: KRW_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             KRW_pctchg   R-squared:                       0.029
+Model:                            OLS   Adj. R-squared:                  0.004
+Method:                 Least Squares   F-statistic:                     1.176
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.285
+Time:                        17:23:41   Log-Likelihood:                -23.021
+No. Observations:                  41   AIC:                             50.04
+Df Residuals:                      39   BIC:                             53.47
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0741      0.073     -1.021      0.314      -0.221       0.073
+event_intensity  2.069e-06   1.91e-06      1.085      0.285   -1.79e-06    5.93e-06
+==============================================================================
+Omnibus:                        0.752   Durbin-Watson:                   2.013
+Prob(Omnibus):                  0.687   Jarque-Bera (JB):                0.310
+Skew:                          -0.205   Prob(JB):                        0.856
+Kurtosis:                       3.113   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: TRY_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             TRY_pctchg   R-squared:                       0.000
+Model:                            OLS   Adj. R-squared:                 -0.026
+Method:                 Least Squares   F-statistic:                   0.01485
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.904
+Time:                        17:23:41   Log-Likelihood:                -33.154
+No. Observations:                  40   AIC:                             70.31
+Df Residuals:                      38   BIC:                             73.69
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const               0.0662      0.095      0.697      0.490      -0.126       0.259
+event_intensity -3.176e-07   2.61e-06     -0.122      0.904   -5.59e-06    4.96e-06
+==============================================================================
+Omnibus:                       19.829   Durbin-Watson:                   2.016
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):               41.249
+Skew:                           1.177   Prob(JB):                     1.10e-09
+Kurtosis:                       7.382   Cond. No.                     3.85e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.85e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: THB_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             THB_pctchg   R-squared:                       0.008
+Model:                            OLS   Adj. R-squared:                 -0.017
+Method:                 Least Squares   F-statistic:                    0.3291
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.569
+Time:                        17:23:41   Log-Likelihood:                -26.942
+No. Observations:                  41   AIC:                             57.88
+Df Residuals:                      39   BIC:                             61.31
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.0942      0.080     -1.179      0.245      -0.256       0.067
+event_intensity  1.204e-06    2.1e-06      0.574      0.569   -3.04e-06    5.45e-06
+==============================================================================
+Omnibus:                        3.579   Durbin-Watson:                   2.099
+Prob(Omnibus):                  0.167   Jarque-Bera (JB):                2.976
+Skew:                          -0.660   Prob(JB):                        0.226
+Kurtosis:                       2.978   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: TWD_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             TWD_pctchg   R-squared:                       0.008
+Model:                            OLS   Adj. R-squared:                 -0.018
+Method:                 Least Squares   F-statistic:                    0.3109
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.580
+Time:                        17:23:41   Log-Likelihood:                -41.661
+No. Observations:                  41   AIC:                             87.32
+Df Residuals:                      39   BIC:                             90.75
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const               0.0068      0.114      0.059      0.953      -0.225       0.238
+event_intensity  1.676e-06   3.01e-06      0.558      0.580    -4.4e-06    7.76e-06
+==============================================================================
+Omnibus:                       23.320   Durbin-Watson:                   2.417
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              219.134
+Skew:                           0.483   Prob(JB):                     2.60e-48
+Kurtosis:                      14.285   Cond. No.                     4.07e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 4.07e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+
+
+=== OLS Regression: RUB_pctchg vs Event Intensity ===
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:             RUB_pctchg   R-squared:                       0.005
+Model:                            OLS   Adj. R-squared:                 -0.021
+Method:                 Least Squares   F-statistic:                    0.1903
+Date:                Mon, 15 Sep 2025   Prob (F-statistic):              0.665
+Time:                        17:23:41   Log-Likelihood:                -67.335
+No. Observations:                  40   AIC:                             138.7
+Df Residuals:                      38   BIC:                             142.0
+Df Model:                           1                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const              -0.1790      0.223     -0.802      0.428      -0.631       0.273
+event_intensity  2.673e-06   6.13e-06      0.436      0.665   -9.73e-06    1.51e-05
+==============================================================================
+Omnibus:                        1.558   Durbin-Watson:                   2.058
+Prob(Omnibus):                  0.459   Jarque-Bera (JB):                1.310
+Skew:                          -0.433   Prob(JB):                        0.520
+Kurtosis:                       2.813   Cond. No.                     3.85e+04
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.85e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
