@@ -1,55 +1,41 @@
-name: Update Data and Run OLS Regression
+name: Daily Data Update
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # Runs every day at 06:00 UTC
-  workflow_dispatch:       # Manual trigger
-
-permissions:
-  contents: write   # allow pushing changes
+    - cron: "0 6 * * *" # Runs every day at 6 AM UTC
+  workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-    - name: Install dependencies
-      run: pip install pandas requests beautifulsoup4 pyarrow fastparquet yfinance openpyxl statsmodels
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run update scripts
-      run: |
-        python scripts/update_historical_events.py
-        python scripts/update_historical_currencies.py
+      - name: Update currencies
+        run: python scripts/update_currencies.py
 
-    - name: Run OLS Regression
-      run: |
-        python scripts/run_ols_regression.py
+      - name: Update events
+        run: python scripts/update_events.py
 
-    - name: Debug outputs
-      run: |
-        echo "---- data/events ----"
-        ls -lh data/events || true
-        echo "---- data/currencies ----"
-        ls -lh data/currencies || true
-        echo "---- results ----"
-        ls -lh results || true
-        cat results/ols_summary.txt || true
+      - name: Run OLS regression
+        run: python scripts/run_ols_regression.py
 
-    - name: Commit and push changes
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add data/events data/currencies results
-        git commit -m "Daily update + OLS regression $(date -u)" || echo "No changes to commit"
-        git pull --rebase origin main || true
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ # <-- commit everything under data/
+          git commit -m "Daily update: data + OLS regression" || echo "No changes to commit"
+          git push
