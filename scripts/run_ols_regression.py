@@ -9,8 +9,7 @@ import os
 # ----------------------------
 CURRENCY_EXCEL = "data/currencies/USD_Exchange_Rates.xlsx"
 EVENTS_DIR = "data/events"
-RESULTS_DIR = Path("results")
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_FILE = Path("data/ols_summary.txt")
 
 # ----------------------------
 # Load currencies
@@ -68,8 +67,7 @@ if merged.empty:
 # ----------------------------
 # Run regression (per currency)
 # ----------------------------
-results_file = RESULTS_DIR / "ols_summary.txt"
-with open(results_file, "w") as f:
+with open(RESULTS_FILE, "w") as f:
     for col in pct_cols:
         y = merged[col].dropna()
         X = merged.loc[y.index, "event_intensity"]
@@ -84,4 +82,4 @@ with open(results_file, "w") as f:
         f.write(model.summary().as_text())
         f.write("\n")
 
-print(f"✅ OLS regression results saved to {results_file}")
+print(f"✅ OLS regression results saved to {RESULTS_FILE}")
