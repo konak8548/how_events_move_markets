@@ -7,3 +7,5 @@ glob2
 statsmodels
 kaleido
 openpyxl
+yfinance
+beautifulsoup4
