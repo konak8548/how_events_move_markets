@@ -24,10 +24,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Update currencies
-        run: python scripts/update_currencies.py
+        run: python scripts/update_historical_currencies.py
 
       - name: Update events
-        run: python scripts/update_events.py
+        run: python scripts/update_historical_events.py
 
       - name: Run OLS regression
         run: python scripts/run_ols_regression.py
