@@ -68,25 +68,33 @@ def load_events_data():
         return pd.DataFrame()
 
 
-def detect_spikes_and_dips(df_currency):
-    spikes_dips = []
-    for cur in CURRENCIES:
-        pct_col = f"{cur}_pctchg"
-        if pct_col not in df_currency.columns:
+def detect_spikes_and_dips(df_currency: pd.DataFrame):
+    results = []
+    for col in df_currency.columns:
+        if col == "DATE":
             continue
 
-        series = df_currency[pct_col].copy()
-        series_z = zscore(series.fillna(0))  # fill NaN with 0 temporarily
+        series = df_currency[col].dropna()
+        if series.empty:
+            continue
 
+        mean, std = series.mean(), series.std()
+        if std == 0:
+            continue
+
+        # z-score as Series with same index
+        series_z = (series - mean) / std
+
+        # spikes and dips
         spikes = series_z[series_z >= Z_THRESHOLD].index
         dips = series_z[series_z <= -Z_THRESHOLD].index
 
         for date in spikes:
-            spikes_dips.append({"Date": date, "Currency": cur, "Type": "Spike"})
+            results.append({"DATE": date, "CURRENCY": col, "TYPE": "SPIKE"})
         for date in dips:
-            spikes_dips.append({"Date": date, "Currency": cur, "Type": "Dip"})
+            results.append({"DATE": date, "CURRENCY": col, "TYPE": "DIP"})
 
-    return pd.DataFrame(spikes_dips)
+    return pd.DataFrame(results)
 
 def get_top_events(events_df, date, country, top_n=3):
     prev_day = date - pd.Timedelta(days=1)
