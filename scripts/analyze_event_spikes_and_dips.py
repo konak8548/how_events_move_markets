@@ -1,172 +1,106 @@
-# scripts/analyze_event_spikes_and_dips.py
-
+#!/usr/bin/env python3
 import os
 import glob
-import numpy as np
 import pandas as pd
-from scipy.stats import zscore
-import matplotlib.pyplot as plt
+import numpy as np
 
-DATA_DIR = "data"
-EVENTS_DIR = os.path.join(DATA_DIR, "events")
-CURRENCIES_DIR = os.path.join(DATA_DIR, "currencies")
-OUTPUT_CSV = os.path.join(DATA_DIR, "spike_dip_event_analysis.csv")
-OUTPUT_XLSX = os.path.join(DATA_DIR, "spike_dip_event_analysis.xlsx")
-
-# Threshold for z-score spikes/dips
-Z_THRESHOLD = 2.0  # ~95% confidence cutoff
+# ----------------------------
+# Paths
+# ----------------------------
+CURRENCY_PATH = "data/currencies/USD_Exchange_Rates.xlsx"
+EVENTS_PATH = "data/events/*/events_*.parquet"
+OUTPUT_PATH = "data/processed/spikes_and_dips.parquet"
 
 
+# ----------------------------
+# Load currency data (Excel)
+# ----------------------------
 def load_currency_data():
-    print("📥 Loading currency data...")
-    files = glob.glob(os.path.join(CURRENCIES_DIR, "*.parquet"))
-    if not files:
-        raise FileNotFoundError("No currency parquet files found.")
+    print("📥 Loading currency data from Excel...")
+    df = pd.read_excel(CURRENCY_PATH, index_col=0, parse_dates=True)
 
-    dfs = []
-    for f in files:
-        try:
-            df = pd.read_parquet(f)
-            dfs.append(df)
-        except Exception as e:
-            print(f"⚠️ Skipping {f} due to error: {e}")
-    df = pd.concat(dfs, ignore_index=True)
-    df["DATE"] = pd.to_datetime(df["DATE"])
-    return df.sort_values("DATE")
+    # keep only pct change columns
+    pct_change_cols = [c for c in df.columns if c.endswith("_pctchg")]
+    if not pct_change_cols:
+        raise ValueError(
+            "No *_pctchg columns found in currency file. Did you run update_historical_currencies.py?"
+        )
+
+    return df[pct_change_cols]
 
 
-def load_events_data():
+# ----------------------------
+# Load event data (Parquet)
+# ----------------------------
+def load_event_data():
     print("📥 Loading events data...")
-    files = glob.glob(os.path.join(EVENTS_DIR, "*/*.parquet"))
-    if not files:
-        raise FileNotFoundError("No event parquet files found.")
-
-    dfs = []
-    for f in files:
+    all_events = []
+    for file in sorted(glob.glob(EVENTS_PATH)):
         try:
-            df = pd.read_parquet(f)
+            df = pd.read_parquet(file)
             if "DATE" not in df.columns:
-                print(f"⚠️ Skipping {f} (no DATE column)")
+                print(f"⚠️ Skipping {file} (no DATE column)")
                 continue
-            # Ensure DATE is datetime
-            df = df[df["DATE"].apply(lambda x: str(x).isdigit())]
-            df["DATE"] = pd.to_datetime(df["DATE"].astype(str), format="%Y%m%d")
-            # Parse country
-            df["COUNTRY"] = df["GEO_COUNTRYCODE"].apply(
-                lambda x: x.split(",")[-1].strip() if pd.notna(x) else None
-            )
-            dfs.append(df)
+            df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
+            df = df.dropna(subset=["DATE"])
+            all_events.append(df)
         except Exception as e:
-            print(f"⚠️ Skipping {f} due to error: {e}")
+            print(f"⚠️ Failed to load {file}: {e}")
+    if not all_events:
+        raise ValueError("No valid event files loaded.")
+    return pd.concat(all_events, ignore_index=True)
 
-    return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
-
-def detect_spikes_and_dips(df_currency):
+# ----------------------------
+# Detect spikes & dips
+# ----------------------------
+def detect_spikes_and_dips(currency_df, threshold=2.0):
     print("📊 Detecting spikes and dips...")
-    df_currency = df_currency.set_index("DATE").sort_index()
 
     results = []
-    for col in df_currency.columns:
-        if col == "DATE":
-            continue
-        series = df_currency[col].dropna()
-        if series.empty:
-            continue
+    for col in currency_df.columns:
+        series = currency_df[col].dropna()
+        mean = series.mean()
+        std = series.std()
 
-        series_z = zscore(series)
-        series_z = pd.Series(series_z, index=series.index)
-
-        spikes = series_z.loc[series_z >= Z_THRESHOLD].index
-        dips = series_z.loc[series_z <= -Z_THRESHOLD].index
-
-        for date in spikes:
-            results.append({"DATE": date, "CURRENCY": col, "TYPE": "SPIKE"})
-        for date in dips:
-            results.append({"DATE": date, "CURRENCY": col, "TYPE": "DIP"})
-
+        for date, val in series.items():
+            zscore = (val - mean) / std if std > 0 else 0
+            if abs(zscore) >= threshold:
+                results.append(
+                    {
+                        "DATE": date,
+                        "CURRENCY": col.replace("_pctchg", ""),
+                        "VALUE": val,
+                        "ZSCORE": zscore,
+                        "SPIKE_DIP": "SPIKE" if zscore > 0 else "DIP",
+                    }
+                )
     return pd.DataFrame(results)
 
 
-def analyze_events_around_spikes(df_events, spikes_dips_df):
-    print("📊 Analyzing events preceding spikes/dips...")
-
-    rows = []
-    for _, row in spikes_dips_df.iterrows():
-        date = pd.to_datetime(row["DATE"])
-        prev_day = date - pd.Timedelta(days=1)
-
-        mask = df_events["DATE"] == prev_day
-        subset = df_events[mask]
-
-        if subset.empty:
-            continue
-
-        top_events = (
-            subset["COUNTTYPE"]
-            .value_counts()
-            .head(3)
-            .reset_index()
-            .rename(columns={"index": "EVENT", "COUNTTYPE": "COUNT"})
-        )
-
-        for _, ev in top_events.iterrows():
-            rows.append(
-                {
-                    "DATE": date,
-                    "CURRENCY": row["CURRENCY"],
-                    "TYPE": row["TYPE"],
-                    "PREV_EVENT": ev["EVENT"],
-                    "COUNT": ev["COUNT"],
-                }
-            )
-
-    return pd.DataFrame(rows)
-
-
-def summarize_results(results_df):
-    print("📊 Summarizing event consistency...")
-
-    summary = (
-        results_df.groupby(["TYPE", "PREV_EVENT"])
-        .size()
-        .reset_index(name="COUNT")
-    )
-
-    total_by_type = summary.groupby("TYPE")["COUNT"].transform("sum")
-    summary["PERCENTAGE"] = (summary["COUNT"] / total_by_type) * 100
-    return summary
-
-
-def plot_summary(summary_df):
-    print("📊 Plotting summary chart...")
-
-    pivot = summary_df.pivot(index="PREV_EVENT", columns="TYPE", values="PERCENTAGE").fillna(0)
-    pivot.plot(kind="bar", stacked=False, figsize=(10, 6))
-    plt.ylabel("Percentage (%)")
-    plt.title("Event Types Preceding Spikes/Dips")
-    plt.tight_layout()
-    plt.savefig(os.path.join(DATA_DIR, "spike_dip_event_summary.png"))
-    plt.close()
-
-
+# ----------------------------
+# Main
+# ----------------------------
 def main():
     df_currency = load_currency_data()
-    df_events = load_events_data()
+    df_events = load_event_data()
 
     spikes_dips_df = detect_spikes_and_dips(df_currency)
+
     print(f"📊 Detected {len(spikes_dips_df)} spikes/dips.")
 
-    results_df = analyze_events_around_spikes(df_events, spikes_dips_df)
-    summary_df = summarize_results(results_df)
+    # Save merged output with events (outer join on DATE)
+    merged = pd.merge(
+        spikes_dips_df,
+        df_events,
+        how="left",
+        left_on="DATE",
+        right_on="DATE",
+    )
 
-    # Save outputs
-    results_df.to_csv(OUTPUT_CSV, index=False)
-    summary_df.to_excel(OUTPUT_XLSX, index=False)
-
-    plot_summary(summary_df)
-
-    print(f"✅ Saved results to {OUTPUT_CSV} and {OUTPUT_XLSX}")
+    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+    merged.to_parquet(OUTPUT_PATH, index=False)
+    print(f"✅ Saved spikes/dips with events to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
