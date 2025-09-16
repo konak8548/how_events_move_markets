@@ -82,10 +82,10 @@ def detect_spikes_and_dips(df_currency: pd.DataFrame):
         if std == 0:
             continue
 
-        # z-score as Series with same index
+        # z-scores as a Pandas Series (preserves index)
         series_z = (series - mean) / std
 
-        # spikes and dips
+        # spikes and dips detection
         spikes = series_z[series_z >= Z_THRESHOLD].index
         dips = series_z[series_z <= -Z_THRESHOLD].index
 
