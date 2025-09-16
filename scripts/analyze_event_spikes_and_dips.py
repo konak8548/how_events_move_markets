@@ -35,8 +35,14 @@ def load_events_data():
     print("📥 Loading events data...")
     files = glob.glob(f"{EVENTS_FOLDER}/**/*.parquet", recursive=True)
     all_dfs = []
+
     for f in files:
         df = pd.read_parquet(f)
+
+        # Skip if DATE column missing
+        if "DATE" not in df.columns:
+            print(f"⚠️ Skipping {f} (no DATE column)")
+            continue
 
         # Filter out invalid DATE entries
         df = df[df["DATE"].apply(lambda x: str(x).isdigit())]
@@ -45,17 +51,22 @@ def load_events_data():
         df["DATE"] = pd.to_datetime(df["DATE"].astype(str), format="%Y%m%d", errors="coerce")
         df = df.dropna(subset=["DATE"])
 
-        # Extract COUNTRY
-        df["COUNTRY"] = df["GEO_COUNTRYCODE"].apply(
-            lambda x: x.split(",")[-1].strip() if pd.notna(x) else None
-        )
+        # Extract COUNTRY safely
+        if "GEO_COUNTRYCODE" in df.columns:
+            df["COUNTRY"] = df["GEO_COUNTRYCODE"].apply(
+                lambda x: x.split(",")[-1].strip() if pd.notna(x) else None
+            )
+        else:
+            df["COUNTRY"] = None
 
         all_dfs.append(df)
 
     if all_dfs:
         return pd.concat(all_dfs, ignore_index=True)
     else:
+        print("⚠️ No usable event files found.")
         return pd.DataFrame()
+
 
 def detect_spikes_and_dips(df_currency):
     spikes_dips = []
