@@ -1,9 +1,9 @@
 # analyze_event_spikes_and_dips.py
 import pandas as pd
 import numpy as np
-import os
 import glob
-import matplotlib.pyplot as plt
+import os
+import plotly.express as px
 from scipy.stats import zscore
 
 # ----------------------------
@@ -14,115 +14,132 @@ CURRENCIES = [
     "NOK","DKK","ZAR","BRL","MXN","SGD","HKD","KRW","TRY","THB",
     "TWD","RUB"
 ]
-CURRENCY_TO_COUNTRY = {
-    "EUR": "Eurozone", "GBP": "United Kingdom", "JPY": "Japan", "CAD": "Canada",
-    "AUD": "Australia", "CHF": "Switzerland", "CNY": "China", "INR": "India",
-    "NZD": "New Zealand", "SEK": "Sweden", "NOK": "Norway", "DKK": "Denmark",
-    "ZAR": "South Africa", "BRL": "Brazil", "MXN": "Mexico", "SGD": "Singapore",
-    "HKD": "Hong Kong", "KRW": "South Korea", "TRY": "Turkey", "THB": "Thailand",
-    "TWD": "Taiwan", "RUB": "Russia"
-}
-DATA_DIR = "data"
-CURRENCIES_FILE = os.path.join(DATA_DIR, "currencies", "USD_Exchange_Rates.xlsx")
-EVENTS_DIR = os.path.join(DATA_DIR, "events")
-RESULTS_FILE = os.path.join(DATA_DIR, "event_spike_dip_summary.csv")
+CURRENCY_EXCEL_PATH = "data/currencies/USD_Exchange_Rates.xlsx"
+EVENTS_FOLDER = "data/events"
+RESULTS_FOLDER = "data/event_analysis"
+os.makedirs(RESULTS_FOLDER, exist_ok=True)
+
+# z-score threshold for spikes/dips
+Z_THRESHOLD = 2  # roughly top/bottom 2.5% of changes
 
 # ----------------------------
 # Helper Functions
 # ----------------------------
 def load_currency_data():
-    df = pd.read_excel(CURRENCIES_FILE, index_col=0, parse_dates=True)
-    # Only keep percentage change columns
-    pct_cols = [f"{c}_pctchg" for c in CURRENCIES]
-    df_pct = df[pct_cols].copy()
-    return df_pct
+    print("📥 Loading currency data...")
+    df = pd.read_excel(CURRENCY_EXCEL_PATH, index_col=0, parse_dates=True)
+    df.index = pd.to_datetime(df.index)
+    return df
 
 def load_events_data():
-    parquet_files = glob.glob(os.path.join(EVENTS_DIR, "**/*.parquet"), recursive=True)
-    dfs = []
-    for pf in parquet_files:
-        df = pd.read_parquet(pf)
-        df["DATE"] = pd.to_datetime(df["DATE"].astype(str), format="%Y%m%d")
-        # Extract country from GEO_COUNTRYCODE
-        df["COUNTRY"] = df["GEO_COUNTRYCODE"].apply(lambda x: x.split(",")[-1].strip() if pd.notna(x) else None)
-        dfs.append(df)
-    all_events = pd.concat(dfs, ignore_index=True)
-    return all_events
+    print("📥 Loading events data...")
+    files = glob.glob(f"{EVENTS_FOLDER}/**/*.parquet", recursive=True)
+    all_dfs = []
+    for f in files:
+        df = pd.read_parquet(f)
 
-def identify_spikes_dips(df_pct, z_thresh=2.0):
-    spikes = {}
-    dips = {}
-    for cur in CURRENCIES:
-        z = zscore(df_pct[cur + "_pctchg"].fillna(0))
-        spikes[cur] = df_pct.index[z >= z_thresh].tolist()
-        dips[cur] = df_pct.index[z <= -z_thresh].tolist()
-    return spikes, dips
+        # Filter out invalid DATE entries
+        df = df[df["DATE"].apply(lambda x: str(x).isdigit())]
 
-def map_events_to_changes(change_dates, currency, df_events):
-    country = CURRENCY_TO_COUNTRY.get(currency)
-    summary = {}
-    for dt in change_dates:
-        prev_day = dt - pd.Timedelta(days=1)
-        events_prev = df_events[df_events["DATE"] == prev_day]
-        if country:
-            events_prev = events_prev[events_prev["COUNTRY"] == country]
-        top_events = (
-            events_prev.groupby("COUNTTYPE")["NUMARTS"]
-            .sum()
-            .sort_values(ascending=False)
-            .head(3)
+        # Convert DATE to datetime
+        df["DATE"] = pd.to_datetime(df["DATE"].astype(str), format="%Y%m%d", errors="coerce")
+        df = df.dropna(subset=["DATE"])
+
+        # Extract COUNTRY
+        df["COUNTRY"] = df["GEO_COUNTRYCODE"].apply(
+            lambda x: x.split(",")[-1].strip() if pd.notna(x) else None
         )
-        summary[dt] = top_events.to_dict()
-    return summary
 
-def aggregate_summary(all_summaries):
-    # all_summaries = {currency: {date: {event_type: count}}}
-    agg = {}
-    for cur, date_dict in all_summaries.items():
-        for date, events in date_dict.items():
-            for ev, cnt in events.items():
-                agg[ev] = agg.get(ev, 0) + cnt
-    total = sum(agg.values())
-    percent_summary = {k: round(v / total * 100, 1) for k, v in agg.items()}
-    return percent_summary
+        all_dfs.append(df)
+
+    if all_dfs:
+        return pd.concat(all_dfs, ignore_index=True)
+    else:
+        return pd.DataFrame()
+
+def detect_spikes_and_dips(df_currency):
+    spikes_dips = []
+    for cur in CURRENCIES:
+        pct_col = f"{cur}_pctchg"
+        if pct_col not in df_currency.columns:
+            continue
+
+        series = df_currency[pct_col].copy()
+        series_z = zscore(series.fillna(0))  # fill NaN with 0 temporarily
+
+        spikes = series_z[series_z >= Z_THRESHOLD].index
+        dips = series_z[series_z <= -Z_THRESHOLD].index
+
+        for date in spikes:
+            spikes_dips.append({"Date": date, "Currency": cur, "Type": "Spike"})
+        for date in dips:
+            spikes_dips.append({"Date": date, "Currency": cur, "Type": "Dip"})
+
+    return pd.DataFrame(spikes_dips)
+
+def get_top_events(events_df, date, country, top_n=3):
+    prev_day = date - pd.Timedelta(days=1)
+    df_filtered = events_df[(events_df["DATE"] == prev_day) & (events_df["COUNTRY"] == country)]
+    top_events = df_filtered["COUNTTYPE"].value_counts().head(top_n)
+    return top_events.to_dict()
 
 # ----------------------------
-# Main
+# Main Analysis
 # ----------------------------
 def main():
-    os.makedirs(DATA_DIR, exist_ok=True)
-    print("📥 Loading currency data...")
-    df_pct = load_currency_data()
-    print("📥 Loading events data...")
+    df_currency = load_currency_data()
     df_events = load_events_data()
-    print("⚡ Identifying spikes and dips...")
-    spikes, dips = identify_spikes_dips(df_pct, z_thresh=2.0)  # ~2 SD threshold
+    if df_currency.empty or df_events.empty:
+        print("⚠️ No data to process.")
+        return
 
-    # Map events for each currency
-    spike_event_summary = {}
-    dip_event_summary = {}
+    spikes_dips_df = detect_spikes_and_dips(df_currency)
+    print(f"📊 Detected {len(spikes_dips_df)} spikes/dips.")
 
-    print("🔗 Mapping events to spikes...")
-    for cur in CURRENCIES:
-        spike_event_summary[cur] = map_events_to_changes(spikes[cur], cur, df_events)
-        dip_event_summary[cur] = map_events_to_changes(dips[cur], cur, df_events)
+    # Analyze top events preceding spikes/dips
+    analysis_results = []
+    for _, row in spikes_dips_df.iterrows():
+        date = pd.to_datetime(row["Date"])
+        cur = row["Currency"]
 
-    # Aggregate across all currencies
-    spike_agg = aggregate_summary(spike_event_summary)
-    dip_agg = aggregate_summary(dip_event_summary)
+        # Map currency to country if possible (simplified, adjust as needed)
+        currency_country_map = {
+            "EUR": "France", "GBP": "United Kingdom", "JPY": "Japan", "CAD": "Canada",
+            "AUD": "Australia", "CHF": "Switzerland", "CNY": "China", "INR": "India",
+            "NZD": "New Zealand", "SEK": "Sweden", "NOK": "Norway", "DKK": "Denmark",
+            "ZAR": "South Africa", "BRL": "Brazil", "MXN": "Mexico", "SGD": "Singapore",
+            "HKD": "Hong Kong", "KRW": "South Korea", "TRY": "Turkey", "THB": "Thailand",
+            "TWD": "Taiwan", "RUB": "Russia"
+        }
+        country = currency_country_map.get(cur, None)
+        if country is None:
+            continue
 
-    # Save CSV
-    result_df = pd.DataFrame([spike_agg, dip_agg], index=["Spikes", "Dips"]).transpose()
-    result_df.to_csv(RESULTS_FILE)
-    print(f"✅ Saved spike/dip summary to {RESULTS_FILE}")
+        top_events = get_top_events(df_events, date, country)
+        for event, count in top_events.items():
+            analysis_results.append({
+                "Date": date,
+                "Currency": cur,
+                "SpikeDip": row["Type"],
+                "Event": event,
+                "Count": count
+            })
 
-    # Plotting
-    fig, ax = plt.subplots(1,2, figsize=(14,6))
-    result_df["Spikes"].sort_values(ascending=False).plot(kind="bar", ax=ax[0], title="Spikes preceded by events (%)")
-    result_df["Dips"].sort_values(ascending=False).plot(kind="bar", ax=ax[1], title="Dips preceded by events (%)")
-    plt.tight_layout()
-    plt.savefig(os.path.join(DATA_DIR, "event_spike_dip_summary.png"))
-    print("✅ Saved summary chart to data/event_spike_dip_summary.png")
+    df_analysis = pd.DataFrame(analysis_results)
+    output_path = os.path.join(RESULTS_FOLDER, "currency_spike_dip_event_analysis.xlsx")
+    df_analysis.to_excel(output_path, index=False)
+    print(f"✅ Saved analysis results -> {output_path}")
+
+    # Optional: aggregate stats
+    stats = df_analysis.groupby(["SpikeDip", "Event"])["Date"].count().reset_index()
+    stats.columns = ["SpikeDip", "Event", "Occurrences"]
+    stats["Percentage"] = (stats["Occurrences"] / stats.groupby("SpikeDip")["Occurrences"].transform("sum") * 100).round(2)
+
+    fig = px.bar(stats, x="Event", y="Percentage", color="SpikeDip", barmode="group",
+                 title="Percentage of Spikes/Dips preceded by events")
+    fig_path = os.path.join(RESULTS_FOLDER, "spike_dip_event_chart.html")
+    fig.write_html(fig_path)
+    print(f"✅ Saved chart -> {fig_path}")
 
 if __name__ == "__main__":
     main()
