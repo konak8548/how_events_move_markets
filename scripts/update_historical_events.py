@@ -55,6 +55,7 @@ def save_monthly(df: pd.DataFrame, year: int, month: int):
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, f"events_{year}_{month:02d}.parquet")
 
+    existing = None
     if os.path.exists(path):
         existing = pd.read_parquet(path)
         combined = pd.concat([existing, df]).drop_duplicates(subset=["GlobalEventID"])
@@ -64,8 +65,10 @@ def save_monthly(df: pd.DataFrame, year: int, month: int):
     combined.to_parquet(path, index=False)
     print(f"💾 Saved {len(combined)} rows -> {path}")
 
-    # Clear memory/cache
-    del df, combined, existing
+    # Clear memory/cache safely
+    del df, combined
+    if existing is not None:
+        del existing
     gc.collect()
 
 
@@ -121,10 +124,12 @@ def process_year(year: int, max_retries=3):
         if all_dfs:
             final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=["GlobalEventID"])
             save_monthly(final_df, year, month)
+            del final_df
+            gc.collect()
         else:
             print(f"⚠️ No data processed for {year}-{month:02d}")
 
 
 if __name__ == "__main__":
-    for year in range(2015, 2026):
+    for year in range(2015, 2025):
         process_year(year)
