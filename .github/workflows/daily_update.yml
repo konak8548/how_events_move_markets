@@ -33,6 +33,9 @@ jobs:
 
       - name: Update events
         run: python scripts/update_historical_events.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: List data files (debug)
         run: |
@@ -43,10 +46,11 @@ jobs:
           echo "---- data/spike_dip_events.csv ----"
           ls -lh data/spike_dip_events.csv || true
 
+      # Safety commit if anything was missed
       - name: Commit and push updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/events/**/*.parquet data/currencies/* data/spike_dip_events.csv || true
+          git add data/ || true
           git commit -m "Daily update: currencies, events, spikes/dips" || echo "No changes to commit"
           git push
