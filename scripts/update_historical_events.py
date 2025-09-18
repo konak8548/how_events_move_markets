@@ -37,8 +37,8 @@ def download_and_extract(url):
             z.open(fname),
             sep="\t",
             header=None,
-            usecols=[0, 1, 26, 51, 52],  # Selected columns
-            names=["GlobalEventID", "Date", "Actor1Country", "ActionGeo_Country", "EventCode"],
+            usecols=[0, 1, 26, 51],  # Selected columns
+            names=["GlobalEventID", "Date", "EventCode", "Country"],
             dtype=str
         )
     return df
@@ -53,54 +53,58 @@ def save_monthly(df: pd.DataFrame, year: int, month: int):
     path = os.path.join(folder, f"events_{year}_{month:02d}.parquet")
 
     if os.path.exists(path):
-        print(f"ℹ️ Parquet already exists: {path}, skipping...")
-        return
+        existing = pd.read_parquet(path)
+        combined = pd.concat([existing, df]).drop_duplicates(subset=["GlobalEventID"])
+    else:
+        combined = df
 
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df = df.dropna(subset=["Date"])
-    df.to_parquet(path, index=False)
-    print(f"💾 Saved {len(df)} rows -> {path}")
+    combined.to_parquet(path, index=False)
+    print(f"💾 Saved {len(combined)} rows -> {path}")
 
 
-def process_all_months():
+def process_latest_month():
     """
-    Process all monthly events in the GDELT master index
+    Process only the latest month’s events (India only, Date as date).
     """
     files = fetch_gdelt_index()
 
-    # Group files by year-month
-    month_dict = {}
-    for url in files:
-        fname = url.split("/")[-1]
+    # Get the latest file date available
+    latest_file = files[-1]
+    fname = latest_file.split("/")[-1]
+    latest_dt = datetime.strptime(fname[:12], "%Y%m%d%H%M%S")
+
+    year, month = latest_dt.year, latest_dt.month
+    print(f"🗓 Processing latest available month: {year}-{month:02d}")
+
+    # Filter only files from this year and month
+    month_files = [
+        url for url in files
+        if datetime.strptime(url.split("/")[-1][:12], "%Y%m%d%H%M%S").year == year
+        and datetime.strptime(url.split("/")[-1][:12], "%Y%m%d%H%M%S").month == month
+    ]
+
+    all_dfs = []
+    for url in month_files:
         try:
-            dt = datetime.strptime(fname[:12], "%Y%m%d%H%M%S")
-        except:
-            continue
-        key = (dt.year, dt.month)
-        month_dict.setdefault(key, []).append(url)
+            df = download_and_extract(url)
 
-    # Process each month
-    for (year, month), month_files in sorted(month_dict.items()):
-        folder = os.path.join(DATA_DIR, str(year))
-        path = os.path.join(folder, f"events_{year}_{month:02d}.parquet")
-        if os.path.exists(path):
-            print(f"ℹ️ Parquet already exists for {year}-{month:02d}, skipping...")
-            continue
+            # Convert Date to datetime, then keep only date (YYYY-MM-DD)
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
 
-        all_dfs = []
-        for url in month_files:
-            try:
-                df = download_and_extract(url)
-                all_dfs.append(df)
-            except Exception as e:
-                print(f"❌ Failed {url}: {e}")
+            # Keep only events where Country contains "India" (case-insensitive)
+            df = df[df["Country"].str.contains("india", case=False, na=False)]
 
-        if all_dfs:
-            final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=["GlobalEventID"])
-            save_monthly(final_df, year, month)
-        else:
-            print(f"⚠️ No data processed for {year}-{month:02d}")
+            df = df.dropna(subset=["Date"])
+            all_dfs.append(df)
+        except Exception as e:
+            print(f"❌ Failed {url}: {e}")
+
+    if all_dfs:
+        final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=["GlobalEventID"])
+        save_monthly(final_df, year, month)
+    else:
+        print("⚠️ No data processed for this month.")
 
 
 if __name__ == "__main__":
-    process_all_months()
+    process_latest_month()
