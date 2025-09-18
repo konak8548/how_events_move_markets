@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 import gc
 
-DATA_DIR = "/data/events"
+DATA_DIR = "data/events"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 INDEX_URL = "http://data.gdeltproject.org/gdeltv2/masterfilelist.txt"
