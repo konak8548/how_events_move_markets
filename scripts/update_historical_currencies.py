@@ -1,47 +1,89 @@
-import os
+# update_historical_currencies.py
+import yfinance as yf
 import pandas as pd
-from datetime import datetime, date, timedelta
+from datetime import date
+import os
 
-# Base directories
-DATA_DIR = "data/currencies"
-os.makedirs(DATA_DIR, exist_ok=True)
+# ----------------------------
+# Configuration
+# ----------------------------
+CURRENCIES = [
+    "EUR","GBP","JPY","CAD","AUD","CHF","CNY","INR","NZD","SEK",
+    "NOK","DKK","ZAR","BRL","MXN","SGD","HKD","KRW","TRY","THB",
+    "TWD","RUB"
+]
+BASE_CURRENCY = "USD"
+EXCEL_PATH = "data/currencies/USD_Exchange_Rates.xlsx"
 
-# Start and end dates
-START_DATE = date(2015, 2, 18)
-TODAY = date.today()  # Always date type
+# ----------------------------
+# Helper Functions
+# ----------------------------
+def fetch_currency_data(start_date, end_date):
+    """Fetch currency closing rates from Yahoo Finance for all currencies."""
+    all_data = pd.DataFrame()
+    for cur in CURRENCIES:
+        ticker = f"{BASE_CURRENCY}{cur}=X"
+        df = yf.download(ticker, start=start_date, end=end_date, interval="1d", progress=False)
+        df = df[["Close"]].copy()
+        df.columns = [cur]  # rename column to currency code
+        df.index = df.index.date  # keep only date (no datetime)
+        df.index = pd.to_datetime(df.index).date  # ensure index is datetime.date type
+        if all_data.empty:
+            all_data = df
+        else:
+            all_data = all_data.join(df, how="outer")
+    all_data.index.name = "Date"
+    return all_data
 
-# Example: list of currencies to track
-CURRENCIES = ["USD", "EUR", "GBP", "JPY"]  # adjust as needed
+def add_pct_change(df):
+    """Add % change columns for all currencies."""
+    for cur in CURRENCIES:
+        if cur in df.columns:
+            df[f"{cur}_pctchg"] = df[cur].pct_change().round(3) * 100
+    return df
 
-# Current day iterator
-current = START_DATE
-
-while current <= TODAY:
-    year = current.year
-    month = current.month
-    day = current.day
-
-    # Example output path: data/currencies/YYYY_MM_DD.csv
-    outdir = os.path.join(DATA_DIR, str(year), f"{month:02d}")
-    os.makedirs(outdir, exist_ok=True)
-    outpath = os.path.join(outdir, f"currencies_{year}_{month:02d}_{day:02d}.csv")
-
-    if os.path.exists(outpath):
-        print(f"Skipping {outpath} (already exists)")
+# ----------------------------
+# Main Incremental Update
+# ----------------------------
+def main():
+    # Determine last date in existing Excel
+    if os.path.exists(EXCEL_PATH):
+        try:
+            existing_df = pd.read_excel(EXCEL_PATH, index_col=0)
+            last_date = pd.to_datetime(existing_df.index).max().date()
+            start_date = (last_date).strftime("%Y-%m-%d")
+            print(f"📈 Last date in Excel: {last_date}. Fetching from {start_date} to today.")
+        except Exception as e:
+            print(f"⚠️ Failed to read existing Excel: {e}")
+            existing_df = pd.DataFrame()
+            start_date = "2013-04-01"
     else:
-        print(f"Processing {current}...")
+        existing_df = pd.DataFrame()
+        start_date = "2013-04-01"
 
-        # --- Your currency download logic goes here ---
-        # Example placeholder DataFrame
-        df = pd.DataFrame({
-            "Date": [current],
-            "Currency": CURRENCIES,
-            "Rate": [1.0]*len(CURRENCIES)  # Replace with real rates
-        })
+    end_date = date.today().isoformat()
+    if pd.to_datetime(start_date) >= pd.to_datetime(end_date):
+        print("✅ Excel is already up-to-date. Nothing to fetch.")
+        return
 
-        # Save CSV
-        df.to_csv(outpath, index=False)
-        print(f"✅ Saved {outpath}")
+    # Fetch new data
+    new_data = fetch_currency_data(start_date, end_date)
+    new_data = add_pct_change(new_data)
 
-    # Move to next day
-    current += timedelta(days=1)
+    # Combine with existing data
+    if not existing_df.empty:
+        combined = pd.concat([existing_df, new_data])
+        combined = combined[~combined.index.duplicated(keep='last')]
+    else:
+        combined = new_data
+
+    # Convert index to string YYYY-MM-DD for clean Excel
+    combined.index = pd.to_datetime(combined.index).strftime("%Y-%m-%d")
+
+    # Save to Excel
+    os.makedirs(os.path.dirname(EXCEL_PATH), exist_ok=True)
+    combined.to_excel(EXCEL_PATH, index=True, float_format="%.3f")
+    print(f"✅ Excel updated: {EXCEL_PATH}. Rows: {len(combined)}")
+
+if __name__ == "__main__":
+    main()
