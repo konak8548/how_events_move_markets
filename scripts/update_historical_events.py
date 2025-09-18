@@ -4,6 +4,7 @@ import zipfile
 import io
 import pandas as pd
 from datetime import datetime
+import gc  # For garbage collection
 
 # Local storage directory for parquet files
 DATA_DIR = "data/events"
@@ -48,7 +49,7 @@ def download_and_extract(url):
 
 def save_monthly(df: pd.DataFrame, year: int, month: int):
     """
-    Save dataframe to parquet by year/month
+    Save dataframe to parquet by year/month and clear memory
     """
     folder = os.path.join(DATA_DIR, str(year))
     os.makedirs(folder, exist_ok=True)
@@ -63,60 +64,67 @@ def save_monthly(df: pd.DataFrame, year: int, month: int):
     combined.to_parquet(path, index=False)
     print(f"💾 Saved {len(combined)} rows -> {path}")
 
+    # Clear memory/cache
+    del df, combined, existing
+    gc.collect()
 
-def process_latest_month():
+
+def process_year(year: int, max_retries=3):
     """
-    Process only the latest month’s events (India only, SQLDATE as date).
+    Process all months for a given year and filter for India
     """
     files = fetch_gdelt_index()
 
-    # Get the latest file date available
-    latest_file = files[-1]
-    fname = latest_file.split("/")[-1]
-    latest_dt = datetime.strptime(fname[:12], "%Y%m%d%H%M%S")
-
-    year, month = latest_dt.year, latest_dt.month
-    print(f"🗓 Processing latest available month: {year}-{month:02d}")
-
-    # Filter only files from this year and month
-    month_files = [
+    # Filter files for the given year
+    year_files = [
         url for url in files
         if datetime.strptime(url.split("/")[-1][:12], "%Y%m%d%H%M%S").year == year
-        and datetime.strptime(url.split("/")[-1][:12], "%Y%m%d%H%M%S").month == month
     ]
+    print(f"🗓 Found {len(year_files)} files for year {year}")
 
-    all_dfs = []
-    for url in month_files:
-        try:
-            df = download_and_extract(url)
+    # Group files by month
+    month_to_files = {}
+    for url in year_files:
+        dt = datetime.strptime(url.split("/")[-1][:12], "%Y%m%d%H%M%S")
+        month_to_files.setdefault(dt.month, []).append(url)
 
-            # Convert SQLDATE to datetime (format: YYYYMMDD), then keep only date
-            df["SQLDATE"] = pd.to_datetime(df["SQLDATE"], format="%Y%m%d", errors="coerce").dt.date
+    # Process each month
+    for month in sorted(month_to_files.keys()):
+        monthly_path = os.path.join(DATA_DIR, str(year), f"events_{year}_{month:02d}.parquet")
+        if os.path.exists(monthly_path):
+            print(f"💾 Skipping {year}-{month:02d}, parquet already exists.")
+            continue
 
-            # Print which dates are inside this file
-            if not df.empty:
-                min_date, max_date = df["SQLDATE"].min(), df["SQLDATE"].max()
-                print(f"   📂 {url.split('/')[-1]} → covers {min_date} to {max_date}")
+        print(f"\n🔹 Processing {year}-{month:02d}")
+        all_dfs = []
+        for url in month_to_files[month]:
+            for attempt in range(max_retries):
+                try:
+                    df = download_and_extract(url)
+                    df["SQLDATE"] = pd.to_datetime(df["SQLDATE"], format="%Y%m%d", errors="coerce").dt.date
 
-                # Optional: also print row counts per day
-                daily_counts = df.groupby("SQLDATE").size()
-                for d, count in daily_counts.items():
-                    print(f"      📅 {d}: {count} rows")
+                    # Filter for India (case-insensitive in ActionGeo_ADM1Code)
+                    df = df[df["ActionGeo_ADM1Code"].str.contains("india", case=False, na=False)]
+                    df = df.dropna(subset=["SQLDATE"])
 
-            # ✅ Filter for rows where ActionGeo_ADM1Code contains "India"
-            df = df[df["ActionGeo_ADM1Code"].str.contains("india", case=False, na=False)]
+                    if not df.empty:
+                        min_date, max_date = df["SQLDATE"].min(), df["SQLDATE"].max()
+                        print(f"   📂 {url.split('/')[-1]} → covers {min_date} to {max_date}, rows: {len(df)}")
 
-            df = df.dropna(subset=["SQLDATE"])
-            all_dfs.append(df)
-        except Exception as e:
-            print(f"❌ Failed {url}: {e}")
+                    all_dfs.append(df)
+                    break  # Success, exit retry loop
+                except Exception as e:
+                    print(f"⚠️ Attempt {attempt+1} failed for {url}: {e}")
+                    if attempt == max_retries - 1:
+                        print(f"❌ Skipping {url} after {max_retries} failed attempts.")
 
-    if all_dfs:
-        final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=["GlobalEventID"])
-        save_monthly(final_df, year, month)
-    else:
-        print("⚠️ No data processed for this month.")
+        if all_dfs:
+            final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=["GlobalEventID"])
+            save_monthly(final_df, year, month)
+        else:
+            print(f"⚠️ No data processed for {year}-{month:02d}")
 
 
 if __name__ == "__main__":
-    process_latest_month()
+    for year in range(2015, 2026):
+        process_year(year)
