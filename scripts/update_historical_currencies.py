@@ -1,89 +1,75 @@
-# update_historical_currencies.py
-import yfinance as yf
-import pandas as pd
-from datetime import date
 import os
+import pandas as pd
+from datetime import datetime, timedelta
 
-# ----------------------------
-# Configuration
-# ----------------------------
-CURRENCIES = [
-    "EUR","GBP","JPY","CAD","AUD","CHF","CNY","INR","NZD","SEK",
-    "NOK","DKK","ZAR","BRL","MXN","SGD","HKD","KRW","TRY","THB",
-    "TWD","RUB"
-]
-BASE_CURRENCY = "USD"
-EXCEL_PATH = "data/currencies/USD_Exchange_Rates.xlsx"
+DATA_DIR = "data/events"
+START_DATE = datetime(2015, 2, 18)
+TODAY = datetime.utcnow().date().replace(day=1)  # up to current month
 
-# ----------------------------
-# Helper Functions
-# ----------------------------
-def fetch_currency_data(start_date, end_date):
-    """Fetch currency closing rates from Yahoo Finance for all currencies."""
-    all_data = pd.DataFrame()
-    for cur in CURRENCIES:
-        ticker = f"{BASE_CURRENCY}{cur}=X"
-        df = yf.download(ticker, start=start_date, end=end_date, interval="1d", progress=False)
-        df = df[["Close"]].copy()
-        df.columns = [cur]  # rename column to currency code
-        df.index = df.index.date  # keep only date (no datetime)
-        df.index = pd.to_datetime(df.index).date  # ensure index is datetime.date type
-        if all_data.empty:
-            all_data = df
-        else:
-            all_data = all_data.join(df, how="outer")
-    all_data.index.name = "Date"
-    return all_data
+# Make sure base dir exists
+os.makedirs(DATA_DIR, exist_ok=True)
 
-def add_pct_change(df):
-    """Add % change columns for all currencies."""
-    for cur in CURRENCIES:
-        if cur in df.columns:
-            df[f"{cur}_pctchg"] = df[cur].pct_change().round(3) * 100
-    return df
+def normalize_country(geo_str):
+    if pd.isna(geo_str) or geo_str.strip() == "":
+        return None
+    if "," in geo_str:
+        return geo_str.split(",")[-1].strip()
+    return geo_str.strip()
 
-# ----------------------------
-# Main Incremental Update
-# ----------------------------
-def main():
-    # Determine last date in existing Excel
-    if os.path.exists(EXCEL_PATH):
+# List of countries you want to keep
+ALLOWED_COUNTRIES = {
+    "India", "China", "Russia", "Philippines",
+    "Israel", "Vietnam", "Mexico",
+    "Germany", "France", "Italy", "Spain", "Netherlands", "Belgium", "Austria", "Portugal", "Finland", "Greece"  # top EUR countries
+}
+
+# Generate month ranges
+current = START_DATE
+while current <= TODAY:
+    year = current.year
+    month = current.month
+    outdir = os.path.join(DATA_DIR, str(year))
+    os.makedirs(outdir, exist_ok=True)
+
+    outpath = os.path.join(outdir, f"events_{year}_{month:02d}.parquet")
+
+    if os.path.exists(outpath):
+        print(f"Skipping {outpath} (already exists).")
+    else:
+        print(f"Processing {year}-{month:02d}...")
+        # Example: build your GDELT URL for that month
+        # (replace with real download logic)
+        url = f"http://data.gdeltproject.org/events/{year}{month:02d}.export.CSV.zip"
+
         try:
-            existing_df = pd.read_excel(EXCEL_PATH, index_col=0)
-            last_date = pd.to_datetime(existing_df.index).max().date()
-            start_date = (last_date).strftime("%Y-%m-%d")
-            print(f"📈 Last date in Excel: {last_date}. Fetching from {start_date} to today.")
+            df = pd.read_csv(url, sep="\t", low_memory=False, compression="zip")
         except Exception as e:
-            print(f"⚠️ Failed to read existing Excel: {e}")
-            existing_df = pd.DataFrame()
-            start_date = "2013-04-01"
-    else:
-        existing_df = pd.DataFrame()
-        start_date = "2013-04-01"
+            print(f"⚠️ Failed to download {url}: {e}")
+            current += timedelta(days=32)
+            current = current.replace(day=1)
+            continue
 
-    end_date = date.today().isoformat()
-    if pd.to_datetime(start_date) >= pd.to_datetime(end_date):
-        print("✅ Excel is already up-to-date. Nothing to fetch.")
-        return
+        # Convert SQLDATE → date only
+        df["SQLDATE"] = pd.to_datetime(df["SQLDATE"], format="%Y%m%d").dt.date
 
-    # Fetch new data
-    new_data = fetch_currency_data(start_date, end_date)
-    new_data = add_pct_change(new_data)
+        # Normalize ActionGeo_CountryCode
+        df["ActionGeo_CountryCode"] = df["ActionGeo_CountryCode"].map(normalize_country)
 
-    # Combine with existing data
-    if not existing_df.empty:
-        combined = pd.concat([existing_df, new_data])
-        combined = combined[~combined.index.duplicated(keep='last')]
-    else:
-        combined = new_data
+        # Drop Actor1CountryCode
+        if "Actor1CountryCode" in df.columns:
+            df = df.drop(columns=["Actor1CountryCode"])
 
-    # Convert index to string YYYY-MM-DD for clean Excel
-    combined.index = pd.to_datetime(combined.index).strftime("%Y-%m-%d")
+        # Filter allowed countries only
+        df = df[df["ActionGeo_CountryCode"].isin(ALLOWED_COUNTRIES)]
 
-    # Save to Excel
-    os.makedirs(os.path.dirname(EXCEL_PATH), exist_ok=True)
-    combined.to_excel(EXCEL_PATH, index=True, float_format="%.3f")
-    print(f"✅ Excel updated: {EXCEL_PATH}. Rows: {len(combined)}")
+        # Drop null/empty
+        df = df.dropna(subset=["ActionGeo_CountryCode"])
+        df = df[df["ActionGeo_CountryCode"].str.strip() != ""]
 
-if __name__ == "__main__":
-    main()
+        # Save parquet
+        df.to_parquet(outpath, index=False)
+        print(f"✅ Saved {outpath}")
+
+    # Go to next month
+    current += timedelta(days=32)
+    current = current.replace(day=1)
