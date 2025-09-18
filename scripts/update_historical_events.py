@@ -37,8 +37,10 @@ def download_and_extract(url):
             z.open(fname),
             sep="\t",
             header=None,
-            usecols=[0, 1, 26, 51],  # Selected columns
-            names=["GlobalEventID", "Date", "EventCode", "Country"],
+            # Columns based on GDELT schema
+            # 0 = GlobalEventID, 1 = SQLDATE, 26 = EventCode, 52 = ActionGeo_ADM1Code
+            usecols=[0, 1, 26, 52],
+            names=["GlobalEventID", "SQLDATE", "EventCode", "ActionGeo_ADM1Code"],
             dtype=str
         )
     return df
@@ -64,7 +66,7 @@ def save_monthly(df: pd.DataFrame, year: int, month: int):
 
 def process_latest_month():
     """
-    Process only the latest month’s events (India only, Date as date).
+    Process only the latest month’s events (India only, SQLDATE as date).
     """
     files = fetch_gdelt_index()
 
@@ -88,13 +90,23 @@ def process_latest_month():
         try:
             df = download_and_extract(url)
 
-            # Convert Date to datetime, then keep only date (YYYY-MM-DD)
-            df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
+            # Convert SQLDATE to datetime (format: YYYYMMDD), then keep only date
+            df["SQLDATE"] = pd.to_datetime(df["SQLDATE"], format="%Y%m%d", errors="coerce").dt.date
 
-            # Keep only events where Country contains "India" (case-insensitive)
-            df = df[df["Country"].str.contains("india", case=False, na=False)]
+            # Print which dates are inside this file
+            if not df.empty:
+                min_date, max_date = df["SQLDATE"].min(), df["SQLDATE"].max()
+                print(f"   📂 {url.split('/')[-1]} → covers {min_date} to {max_date}")
 
-            df = df.dropna(subset=["Date"])
+                # Optional: also print row counts per day
+                daily_counts = df.groupby("SQLDATE").size()
+                for d, count in daily_counts.items():
+                    print(f"      📅 {d}: {count} rows")
+
+            # ✅ Filter for rows where ActionGeo_ADM1Code contains "India"
+            df = df[df["ActionGeo_ADM1Code"].str.contains("india", case=False, na=False)]
+
+            df = df.dropna(subset=["SQLDATE"])
             all_dfs.append(df)
         except Exception as e:
             print(f"❌ Failed {url}: {e}")
