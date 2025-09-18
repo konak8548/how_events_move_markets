@@ -5,6 +5,7 @@ import io
 import pandas as pd
 from datetime import datetime
 import gc
+import subprocess
 
 DATA_DIR = "data/events"
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -35,6 +36,21 @@ def download_and_extract(url):
     return df
 
 
+def git_commit_file(path, msg):
+    """Commit and push a file immediately to GitHub repo."""
+    try:
+        subprocess.run(["git", "add", path], check=True)
+        subprocess.run(["git", "commit", "-m", msg], check=True)
+        subprocess.run([
+            "git", "push",
+            f"https://x-access-token:{os.environ['GITHUB_TOKEN']}@github.com/{os.environ['GITHUB_REPOSITORY']}.git",
+            "HEAD:main"
+        ], check=True)
+        print(f"✅ Committed {path}")
+    except Exception as e:
+        print(f"⚠️ Git commit failed for {path}: {e}")
+
+
 def save_monthly(df, year, month):
     folder = os.path.join(DATA_DIR, str(year))
     os.makedirs(folder, exist_ok=True)
@@ -49,6 +65,9 @@ def save_monthly(df, year, month):
 
     combined.to_parquet(path, index=False)
     print(f"💾 Saved {len(combined)} rows -> {path}")
+
+    # Commit immediately
+    git_commit_file(path, f"Add events parquet {year}-{month:02d}")
 
     # Clear memory
     del df, combined
