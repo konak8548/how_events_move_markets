@@ -13,9 +13,6 @@ INDEX_URL = "http://data.gdeltproject.org/gdeltv2/masterfilelist.txt"
 
 
 def fetch_gdelt_index():
-    """
-    Fetch GDELT master index file and return list of all event file URLs
-    """
     print("📥 Fetching GDELT master index...")
     res = requests.get(INDEX_URL, timeout=120)
     res.raise_for_status()
@@ -23,6 +20,22 @@ def fetch_gdelt_index():
     files = [line.split(" ")[-1] for line in lines if line.endswith(".export.CSV.zip")]
     print(f"✅ Found {len(files)} event files in index")
     return files
+
+
+def clean_country(val: str) -> str:
+    """
+    Normalize ActionGeo_CountryCode field:
+    - If contains commas, take last part after comma.
+    - Strip spaces.
+    """
+    if pd.isna(val):
+        return None
+    val = val.strip()
+    if not val:
+        return None
+    if "," in val:
+        return val.split(",")[-1].strip()
+    return val
 
 
 def download_and_extract(url):
@@ -37,10 +50,31 @@ def download_and_extract(url):
             z.open(fname),
             sep="\t",
             header=None,
-            usecols=[0, 1, 26, 51, 52],  # Selected columns
-            names=["GlobalEventID", "Date", "Actor1Country", "ActionGeo_Country", "EventCode"],
+            usecols=[0, 1, 26, 52],  # ✅ corrected column mapping
+            names=["GlobalEventID", "SQLDATE", "EventCode", "ActionGeo_CountryCode"],
             dtype=str
         )
+
+    # Keep only date (YYYY-MM-DD)
+    df["Date"] = pd.to_datetime(df["SQLDATE"], format="%Y%m%d", errors="coerce").dt.date
+
+    # Clean ActionGeo_CountryCode
+    df["ActionGeo_CountryCode"] = df["ActionGeo_CountryCode"].apply(clean_country)
+
+    # Drop rows with missing/empty country
+    df = df.dropna(subset=["ActionGeo_CountryCode"])
+    df = df[df["ActionGeo_CountryCode"].str.strip() != ""]
+
+    # Filter only selected countries
+    keep_countries = {
+        "India", "China", "Russia", "Philippines", "Israel", "Vietnam", "Mexico",
+        # Top Euro currency countries
+        "Germany", "France", "Italy", "Spain", "Netherlands", "Belgium",
+        "Austria", "Finland", "Ireland", "Portugal", "Greece", "Luxembourg",
+        "Slovakia", "Slovenia", "Estonia", "Latvia", "Lithuania", "Cyprus", "Malta"
+    }
+    df = df[df["ActionGeo_CountryCode"].isin(keep_countries)]
+
     return df
 
 
@@ -87,9 +121,8 @@ def process_latest_month():
     for url in month_files:
         try:
             df = download_and_extract(url)
-            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-            df = df.dropna(subset=["Date"])
-            all_dfs.append(df)
+            if not df.empty:
+                all_dfs.append(df)
         except Exception as e:
             print(f"❌ Failed {url}: {e}")
 
