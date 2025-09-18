@@ -14,10 +14,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # ensure full history so pushes work
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -35,7 +37,7 @@ jobs:
       - name: List data files (debug)
         run: |
           echo "---- data/events ----"
-          ls -lh data/events || true
+          ls -lhR data/events || true
           echo "---- data/currencies ----"
           ls -lh data/currencies || true
           echo "---- data/spike_dip_events.csv ----"
@@ -45,6 +47,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/
+          git add data/events/**/*.parquet data/currencies/* data/spike_dip_events.csv || true
           git commit -m "Daily update: currencies, events, spikes/dips" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          git push
