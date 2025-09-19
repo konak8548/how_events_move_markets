@@ -139,5 +139,5 @@ def process_year(year, max_retries=3):
 
 
 if __name__ == "__main__":
-    for year in range(2021, 2022):  # adjust range as needed
+    for year in range(2022, 2026):  # adjust range as needed
         process_year(year)
