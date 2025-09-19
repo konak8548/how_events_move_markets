@@ -14,12 +14,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0   # ensure full history so pushes work
+          fetch-depth: 0  # needed for pull+rebase
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
@@ -33,24 +33,42 @@ jobs:
 
       - name: Update events
         run: python scripts/update_historical_events.py
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: List data files (debug)
         run: |
           echo "---- data/events ----"
-          ls -lhR data/events || true
+          ls -lh data/events || true
           echo "---- data/currencies ----"
           ls -lh data/currencies || true
           echo "---- data/spike_dip_events.csv ----"
           ls -lh data/spike_dip_events.csv || true
 
-      # Safety commit if anything was missed
-      - name: Commit and push updates
+      # 1️⃣ Commit + push to main
+      - name: Commit and push to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/ || true
+          git add data/
           git commit -m "Daily update: currencies, events, spikes/dips" || echo "No changes to commit"
-          git push
+          git pull --rebase origin main || true
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main || echo "Push to main failed"
+
+      # 2️⃣ Commit + push to fallback branch
+      - name: Commit and push to data-storage branch
+        if: always() # run even if main push fails
+        run: |
+          git checkout -B data-storage
+          git add data/
+          git commit -m "Daily update backup: parquet storage" || echo "No changes to commit"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git data-storage --force || echo "Push to data-storage failed"
+
+      # 3️⃣ Upload artifacts
+      - name: Upload Parquet files as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parquet-files
+          path: |
+            data/events/**/*.parquet
+            data/currencies/**/*.parquet
+            data/spike_dip_events.csv
