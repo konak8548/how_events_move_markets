@@ -76,6 +76,14 @@ def save_monthly(df, year, month):
     gc.collect()
 
 
+def is_india_location(x: str) -> bool:
+    """Return True if string is exactly 'India' or ends with ', India' (case-insensitive, trimmed)."""
+    if not isinstance(x, str):
+        return False
+    parts = [p.strip().lower() for p in x.split(",")]
+    return parts[-1] == "india"
+
+
 def process_year(year, max_retries=3):
     files = fetch_gdelt_index()
 
@@ -110,7 +118,9 @@ def process_year(year, max_retries=3):
                 try:
                     df = download_and_extract(url)
                     df["SQLDATE"] = pd.to_datetime(df["SQLDATE"], format="%Y%m%d", errors="coerce").dt.date
-                    df = df[df["ActionGeo_ADM1Code"].str.contains("india", case=False, na=False)]
+
+                    # Keep only India rows (last token must be 'India')
+                    df = df[df["ActionGeo_ADM1Code"].apply(is_india_location)]
                     df = df.dropna(subset=["SQLDATE"])
                     all_dfs.append(df)
                     break
@@ -129,5 +139,5 @@ def process_year(year, max_retries=3):
 
 
 if __name__ == "__main__":
-    for year in range(2021, 2022):
+    for year in range(2021, 2022):  # adjust range as needed
         process_year(year)
